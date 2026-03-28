@@ -1,0 +1,11 @@
+FROM golang:1.22 AS build
+WORKDIR /src
+COPY go.mod ./
+COPY cmd ./cmd
+COPY internal ./internal
+RUN go build -o /out/triton-adapter ./cmd/triton-adapter
+
+FROM gcr.io/distroless/base-debian12
+COPY --from=build /out/triton-adapter /triton-adapter
+EXPOSE 9000
+ENTRYPOINT ["/triton-adapter"]

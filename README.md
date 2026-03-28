@@ -2,54 +2,37 @@
 
 InferFlow is a Week 1 MVP for a scalable LLM inference router project. This repository bootstraps the local development path, the Go router, a mock inference backend, starter Kubernetes assets, and Terraform scaffolding for AWS EKS so the team can move from proposal to implementation quickly.
 
+## Documentation
+
+Detailed documentation is organized under [docs/README.md](C:/Users/ajinf/Documents/CS%206650/InferFlow/docs/README.md).
+
+Quick links:
+
+- [Overview](C:/Users/ajinf/Documents/CS%206650/InferFlow/docs/overview.md)
+- [Local Development](C:/Users/ajinf/Documents/CS%206650/InferFlow/docs/local-development.md)
+- [Triton Setup](C:/Users/ajinf/Documents/CS%206650/InferFlow/docs/triton-setup.md)
+- [Kubernetes Deployment](C:/Users/ajinf/Documents/CS%206650/InferFlow/docs/kubernetes-deployment.md)
+- [Terraform Infrastructure](C:/Users/ajinf/Documents/CS%206650/InferFlow/docs/terraform-infrastructure.md)
+- [GitHub Actions](C:/Users/ajinf/Documents/CS%206650/InferFlow/docs/github-actions.md)
+- [Destroy Workflow](C:/Users/ajinf/Documents/CS%206650/InferFlow/docs/destroy-workflow.md)
+
 ## Current MVP Status
 
 Implemented now:
 
 - Go router with `POST /v1/chat/completions`
-- Health endpoints: `GET /healthz` and `GET /readyz`
-- Round-robin routing across configured backends
-- Background backend health probing
-- Local mock backend for end-to-end development
-- Python load generator that writes proposal-aligned CSV output
-- Docker Compose for local router + mock backend
-- Starter Terraform for AWS/EKS baseline
-- Starter Kubernetes manifests and Helm values placeholders
+- mock-backed local development flow
+- Triton adapter plus AWS GPU deployment assets
+- Terraform infrastructure with shared remote state support
+- GitHub Actions for CI, plan/apply, deploy, and destroy
 
 Planned next:
 
-- Triton integration and model repository wiring
 - Streaming SSE responses
 - Kubernetes endpoint discovery
 - Least-pending and cost-aware routing
-- Observability stack wiring (Prometheus, Tempo, Grafana, OTel)
+- Observability stack wiring
 - Autoscaling and experiment automation
-
-## Architecture
-
-The first pass keeps the public API stable while swapping the backend implementation later:
-
-1. Clients send OpenAI-compatible chat completion requests to the Go router.
-2. The router chooses a healthy backend using round-robin.
-3. The router forwards the request to the local mock backend today.
-4. Later, the same router surface can forward to Triton-backed inference adapters.
-
-## Repository Layout
-
-- `cmd/router`: router entrypoint
-- `cmd/mock-backend`: local fake inference backend
-- `internal/router`: strategy and backend registry
-- `internal/proxy`: backend client and translation layer
-- `internal/metrics`: in-memory request metrics
-- `internal/otel`: lightweight tracing hooks placeholder
-- `internal/server`: HTTP handlers and server wiring
-- `loadgen`: Python request generator
-- `analysis`: starter analysis scaffold
-- `triton`: placeholder Triton model repository layout
-- `k8s`: starter manifests and Helm values
-- `scripts`: local and cluster orchestration helpers
-- `terraform`: AWS/EKS baseline infrastructure
-- `results`: generated experiment artifacts
 
 ## Local Quick Start
 
@@ -129,39 +112,10 @@ Returns process liveness.
 
 Returns success only when at least one backend is currently healthy.
 
-## Infrastructure Workflow
-
-Terraform is the source of truth for AWS infrastructure. Helm and `kubectl` will remain the source of truth for in-cluster services such as Triton, Prometheus, Grafana, Tempo, and the router deployment.
-
-### Terraform scope for Week 1
-
-Implemented as starter baseline:
-
-- VPC
-- Public and private subnets
-- EKS cluster
-- Managed GPU node group baseline
-- IAM roles required for cluster and node group creation
-
-Not wired yet:
-
-- Production-ready networking hardening
-- Observability add-ons
-- Autoscaling extensions
-- Remote Terraform state
-
-Validate the baseline:
-
-```bash
-cd terraform/environments/dev
-terraform init -backend=false
-terraform validate
-```
-
 ## Scripts
 
 - `scripts/local-run.ps1`: starts mock backend and router locally
-- `scripts/setup-cluster.sh`: Terraform + Helm/kubectl orchestration stub
-- `scripts/teardown-cluster.sh`: Terraform destroy orchestration stub
+- `scripts/setup-cluster.sh`: infrastructure and deployment helper notes
+- `scripts/teardown-cluster.sh`: destroy helper
 
-These scripts are intentionally honest about current readiness. Local development is runnable today. AWS and cluster scripts are a structured starting point for the next implementation pass.
+Detailed infrastructure, deploy, and destroy docs live under [docs/README.md](C:/Users/ajinf/Documents/CS%206650/InferFlow/docs/README.md).

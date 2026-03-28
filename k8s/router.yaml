@@ -24,7 +24,7 @@ spec:
             - name: INFERFLOW_LISTEN_ADDR
               value: ":8080"
             - name: INFERFLOW_BACKENDS
-              value: "http://triton.default.svc.cluster.local:9000"
+              value: "http://triton-adapter.default.svc.cluster.local:9000"
           readinessProbe:
             httpGet:
               path: /readyz

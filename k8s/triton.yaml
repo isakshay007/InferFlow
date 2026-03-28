@@ -1,0 +1,183 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: triton-qwen3-config
+data:
+  config.pbtxt: |
+    name: "qwen3_0_6b"
+    backend: "python"
+    max_batch_size: 0
+
+    input [
+      {
+        name: "prompt"
+        data_type: TYPE_STRING
+        dims: [ 1 ]
+      },
+      {
+        name: "max_new_tokens"
+        data_type: TYPE_INT32
+        dims: [ 1 ]
+      }
+    ]
+
+    output [
+      {
+        name: "generated_text"
+        data_type: TYPE_STRING
+        dims: [ 1 ]
+      }
+    ]
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: triton-qwen3-code
+data:
+  model.py: |
+    import json
+    import os
+
+    import numpy as np
+    import torch
+    import triton_python_backend_utils as pb_utils
+    from transformers import AutoModelForCausalLM, AutoTokenizer
+
+
+    class TritonPythonModel:
+        def initialize(self, args):
+            model_config = json.loads(args["model_config"])
+            self.model_name = model_config["name"]
+            self.model_id = os.getenv("MODEL_ID", "Qwen/Qwen3-0.6B")
+            self.device = "cuda" if torch.cuda.is_available() else "cpu"
+
+            self.tokenizer = AutoTokenizer.from_pretrained(
+                self.model_id,
+                trust_remote_code=True,
+            )
+            torch_dtype = torch.float16 if self.device == "cuda" else torch.float32
+            self.model = AutoModelForCausalLM.from_pretrained(
+                self.model_id,
+                trust_remote_code=True,
+                torch_dtype=torch_dtype,
+            )
+            self.model.to(self.device)
+            self.model.eval()
+
+        def execute(self, requests):
+            responses = []
+            for request in requests:
+                prompt_tensor = pb_utils.get_input_tensor_by_name(request, "prompt")
+                max_new_tokens_tensor = pb_utils.get_input_tensor_by_name(
+                    request, "max_new_tokens"
+                )
+
+                prompt = prompt_tensor.as_numpy().reshape(-1)[0]
+                if isinstance(prompt, bytes):
+                    prompt = prompt.decode("utf-8")
+
+                max_new_tokens = int(max_new_tokens_tensor.as_numpy().reshape(-1)[0])
+
+                inputs = self.tokenizer(prompt, return_tensors="pt").to(self.device)
+                with torch.no_grad():
+                    output_ids = self.model.generate(
+                        **inputs,
+                        max_new_tokens=max_new_tokens,
+                        do_sample=False,
+                    )
+
+                generated_ids = output_ids[0][inputs["input_ids"].shape[1] :]
+                generated_text = self.tokenizer.decode(
+                    generated_ids,
+                    skip_special_tokens=True,
+                ).strip()
+
+                output = np.array([generated_text], dtype=object)
+                responses.append(
+                    pb_utils.InferenceResponse(
+                        output_tensors=[pb_utils.Tensor("generated_text", output)]
+                    )
+                )
+
+            return responses
+
+        def finalize(self):
+            return
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: triton
+  labels:
+    app: triton
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: triton
+  template:
+    metadata:
+      labels:
+        app: triton
+    spec:
+      containers:
+        - name: triton
+          image: inferflow/triton-qwen3:dev
+          imagePullPolicy: IfNotPresent
+          args:
+            - tritonserver
+            - --model-repository=/models
+          env:
+            - name: MODEL_ID
+              value: "Qwen/Qwen3-0.6B"
+          ports:
+            - containerPort: 8000
+            - containerPort: 8001
+            - containerPort: 8002
+          resources:
+            requests:
+              nvidia.com/gpu: 1
+            limits:
+              nvidia.com/gpu: 1
+          readinessProbe:
+            httpGet:
+              path: /v2/health/ready
+              port: 8000
+            initialDelaySeconds: 15
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /v2/health/live
+              port: 8000
+            initialDelaySeconds: 15
+            periodSeconds: 10
+          volumeMounts:
+            - name: qwen3-config
+              mountPath: /models/qwen3_0_6b
+            - name: qwen3-code
+              mountPath: /models/qwen3_0_6b/1
+      volumes:
+        - name: qwen3-config
+          configMap:
+            name: triton-qwen3-config
+        - name: qwen3-code
+          configMap:
+            name: triton-qwen3-code
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: triton
+spec:
+  selector:
+    app: triton
+  ports:
+    - name: http
+      port: 8000
+      targetPort: 8000
+    - name: grpc
+      port: 8001
+      targetPort: 8001
+    - name: metrics
+      port: 8002
+      targetPort: 8002

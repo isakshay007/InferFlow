@@ -1,0 +1,24 @@
+name: "qwen3_0_6b"
+backend: "python"
+max_batch_size: 0
+
+input [
+  {
+    name: "prompt"
+    data_type: TYPE_STRING
+    dims: [ 1 ]
+  },
+  {
+    name: "max_new_tokens"
+    data_type: TYPE_INT32
+    dims: [ 1 ]
+  }
+]
+
+output [
+  {
+    name: "generated_text"
+    data_type: TYPE_STRING
+    dims: [ 1 ]
+  }
+]

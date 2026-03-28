@@ -1,0 +1,131 @@
+name: Destroy AWS Resources
+
+on:
+  workflow_dispatch:
+    inputs:
+      confirm_destroy:
+        description: 'Type DESTROY to continue'
+        required: true
+        type: string
+      destroy_state_backend:
+        description: 'Also destroy the shared Terraform state bucket and lock table'
+        required: true
+        default: false
+        type: boolean
+
+permissions:
+  id-token: write
+  contents: read
+
+env:
+  AWS_REGION: ${{ vars.AWS_REGION }}
+  EKS_CLUSTER_NAME: ${{ vars.EKS_CLUSTER_NAME }}
+  ECR_REPOSITORY_PREFIX: ${{ vars.ECR_REPOSITORY_PREFIX }}
+  TF_DIR: terraform/environments/dev
+  TF_STATE_BUCKET: ${{ vars.TF_STATE_BUCKET }}
+  TF_LOCK_TABLE: ${{ vars.TF_LOCK_TABLE }}
+  TF_STATE_KEY: ${{ vars.TF_STATE_KEY }}
+
+jobs:
+  destroy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Require explicit confirmation
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [ "${{ github.event.inputs.confirm_destroy }}" != "DESTROY" ]; then
+            echo "Confirmation text did not match DESTROY."
+            exit 1
+          fi
+
+      - name: Validate required repository variables
+        shell: bash
+        run: |
+          set -euo pipefail
+          missing=0
+          for name in AWS_REGION EKS_CLUSTER_NAME ECR_REPOSITORY_PREFIX TF_STATE_BUCKET TF_LOCK_TABLE TF_STATE_KEY; do
+            if [ -z "${!name:-}" ]; then
+              echo "Missing repository variable: $name"
+              missing=1
+            fi
+          done
+          if [ "$missing" -ne 0 ]; then
+            exit 1
+          fi
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_TO_ASSUME }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Set up Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_wrapper: false
+
+      - name: Set up kubectl
+        uses: azure/setup-kubectl@v4
+
+      - name: Try to update kubeconfig
+        shell: bash
+        run: |
+          set +e
+          aws eks update-kubeconfig --name "$EKS_CLUSTER_NAME" --region "$AWS_REGION"
+          echo "kubeconfig_exit=$?" >> "$GITHUB_ENV"
+          exit 0
+
+      - name: Delete Kubernetes resources
+        if: env.kubeconfig_exit == '0'
+        shell: bash
+        run: |
+          set +e
+          kubectl delete -f k8s/router.yaml --ignore-not-found=true
+          kubectl delete -f k8s/triton-adapter.yaml --ignore-not-found=true
+          kubectl delete -f k8s/triton.yaml --ignore-not-found=true
+          exit 0
+
+      - name: Terraform init
+        working-directory: ${{ env.TF_DIR }}
+        run: |
+          terraform init \
+            -backend-config="bucket=${TF_STATE_BUCKET}" \
+            -backend-config="key=${TF_STATE_KEY}" \
+            -backend-config="region=${AWS_REGION}" \
+            -backend-config="dynamodb_table=${TF_LOCK_TABLE}" \
+            -backend-config="encrypt=true"
+
+      - name: Terraform destroy
+        working-directory: ${{ env.TF_DIR }}
+        run: terraform destroy -auto-approve
+
+      - name: Delete ECR repositories
+        shell: bash
+        run: |
+          set +e
+          prefix="${ECR_REPOSITORY_PREFIX}"
+          for repo in "${prefix}/router" "${prefix}/triton-adapter" "${prefix}/triton-qwen3"; do
+            if aws ecr describe-repositories --repository-names "$repo" >/dev/null 2>&1; then
+              echo "Deleting ECR repository: $repo"
+              aws ecr delete-repository --repository-name "$repo" --force
+            else
+              echo "ECR repository not found: $repo"
+            fi
+          done
+          exit 0
+
+      - name: Destroy Terraform state backend
+        if: github.event.inputs.destroy_state_backend == 'true'
+        working-directory: terraform/bootstrap/state
+        run: |
+          terraform init -backend=false
+          terraform destroy -auto-approve \
+            -var="aws_region=${AWS_REGION}" \
+            -var="state_bucket_name=${TF_STATE_BUCKET}" \
+            -var="lock_table_name=${TF_LOCK_TABLE}"

@@ -1,0 +1,9 @@
+FROM nvcr.io/nvidia/tritonserver:24.01-py3
+
+RUN python3 -m pip install --no-cache-dir --upgrade pip && \
+    python3 -m pip install --no-cache-dir \
+      --index-url https://download.pytorch.org/whl/cu121 \
+      torch && \
+    python3 -m pip install --no-cache-dir transformers accelerate sentencepiece
+
+EXPOSE 8000 8001 8002

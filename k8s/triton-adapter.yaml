@@ -1,0 +1,57 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: triton-adapter
+  labels:
+    app: triton-adapter
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: triton-adapter
+  template:
+    metadata:
+      labels:
+        app: triton-adapter
+    spec:
+      containers:
+        - name: triton-adapter
+          image: inferflow/triton-adapter:dev
+          imagePullPolicy: IfNotPresent
+          env:
+            - name: TRITON_ADAPTER_ADDR
+              value: ":9000"
+            - name: TRITON_BASE_URL
+              value: "http://triton.default.svc.cluster.local:8000"
+            - name: TRITON_MODEL_NAME
+              value: "qwen3_0_6b"
+            - name: TRITON_TIMEOUT
+              value: "60s"
+            - name: TRITON_MAX_NEW_TOKENS
+              value: "128"
+          ports:
+            - containerPort: 9000
+          readinessProbe:
+            httpGet:
+              path: /healthz
+              port: 9000
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: 9000
+            initialDelaySeconds: 5
+            periodSeconds: 10
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: triton-adapter
+spec:
+  selector:
+    app: triton-adapter
+  ports:
+    - name: http
+      port: 9000
+      targetPort: 9000
