@@ -21,6 +21,10 @@ func (r *RoundRobin) SetBackends(backends []*Backend) {
 	r.backends = backends
 }
 
+func (r *RoundRobin) Name() string {
+	return StrategyRoundRobin
+}
+
 func (r *RoundRobin) Pick() (*Backend, error) {
 	r.mu.RLock()
 	backends := append([]*Backend(nil), r.backends...)
@@ -39,6 +43,14 @@ func (r *RoundRobin) Pick() (*Backend, error) {
 	}
 
 	return nil, ErrNoHealthyBackend
+}
+
+func (r *RoundRobin) Select(_ int) (Decision, error) {
+	backend, err := r.Pick()
+	if err != nil {
+		return Decision{}, err
+	}
+	return Decision{Backend: backend}, nil
 }
 
 func (r *RoundRobin) HasHealthyBackend() bool {

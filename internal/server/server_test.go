@@ -126,6 +126,85 @@ func TestChatCompletionsReturnsBadGatewayWhenBackendFails(t *testing.T) {
 	}
 }
 
+func TestStrategyEndpointDefaultsToRoundRobin(t *testing.T) {
+	srv := newTestServer(t, []string{"http://127.0.0.1:1"})
+	defer func() { _ = srv.Shutdown() }()
+
+	req := httptest.NewRequest(http.MethodGet, "/strategy", nil)
+	rec := httptest.NewRecorder()
+	srv.httpSrv.Handler.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("expected status 200, got %d", rec.Code)
+	}
+
+	var resp map[string]string
+	if err := json.Unmarshal(rec.Body.Bytes(), &resp); err != nil {
+		t.Fatalf("decode response: %v", err)
+	}
+	if resp["strategy"] != router.StrategyRoundRobin {
+		t.Fatalf("expected strategy %q, got %q", router.StrategyRoundRobin, resp["strategy"])
+	}
+}
+
+func TestStrategyEndpointSupportsSwitching(t *testing.T) {
+	srv := newTestServer(t, []string{"http://127.0.0.1:1"})
+	defer func() { _ = srv.Shutdown() }()
+
+	req := httptest.NewRequest(http.MethodPut, "/strategy", bytes.NewBufferString(`{"strategy":"least-pending"}`))
+	rec := httptest.NewRecorder()
+	srv.httpSrv.Handler.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("expected status 200, got %d", rec.Code)
+	}
+
+	req = httptest.NewRequest(http.MethodGet, "/strategy", nil)
+	rec = httptest.NewRecorder()
+	srv.httpSrv.Handler.ServeHTTP(rec, req)
+
+	var resp map[string]string
+	if err := json.Unmarshal(rec.Body.Bytes(), &resp); err != nil {
+		t.Fatalf("decode response: %v", err)
+	}
+	if resp["strategy"] != router.StrategyLeastPending {
+		t.Fatalf("expected strategy %q, got %q", router.StrategyLeastPending, resp["strategy"])
+	}
+
+	req = httptest.NewRequest(http.MethodPut, "/strategy", bytes.NewBufferString(`{"strategy":"cost_aware"}`))
+	rec = httptest.NewRecorder()
+	srv.httpSrv.Handler.ServeHTTP(rec, req)
+	if rec.Code != http.StatusOK {
+		t.Fatalf("expected status 200, got %d", rec.Code)
+	}
+}
+
+func TestStrategyEndpointRejectsInvalidStrategy(t *testing.T) {
+	srv := newTestServer(t, []string{"http://127.0.0.1:1"})
+	defer func() { _ = srv.Shutdown() }()
+
+	req := httptest.NewRequest(http.MethodPut, "/strategy", bytes.NewBufferString(`{"strategy":"invalid"}`))
+	rec := httptest.NewRecorder()
+	srv.httpSrv.Handler.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusBadRequest {
+		t.Fatalf("expected status 400, got %d", rec.Code)
+	}
+}
+
+func TestStrategyEndpointRejectsUnsupportedMethods(t *testing.T) {
+	srv := newTestServer(t, []string{"http://127.0.0.1:1"})
+	defer func() { _ = srv.Shutdown() }()
+
+	req := httptest.NewRequest(http.MethodPost, "/strategy", bytes.NewBufferString(`{"strategy":"round_robin"}`))
+	rec := httptest.NewRecorder()
+	srv.httpSrv.Handler.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusMethodNotAllowed {
+		t.Fatalf("expected status 405, got %d", rec.Code)
+	}
+}
+
 func newTestServer(t *testing.T, backendURLs []string) *Server {
 	t.Helper()
 	backends := make([]*router.Backend, 0, len(backendURLs))
