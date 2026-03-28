@@ -76,12 +76,13 @@ func TestEndToEndSwitchStrategyThenChatCompletion(t *testing.T) {
 	defer app.Close()
 
 	switchReqBody := []byte(`{"strategy":"least_pending"}`)
-	switchResp, err := http.DefaultClient.Do(&http.Request{
-		Method: http.MethodPut,
-		URL:    mustParseURL(t, app.URL+"/strategy"),
-		Body:   ioNopCloser(bytes.NewReader(switchReqBody)),
-		Header: http.Header{"Content-Type": []string{"application/json"}},
-	})
+	switchReq, err := http.NewRequest(http.MethodPut, app.URL+"/strategy", bytes.NewReader(switchReqBody))
+	if err != nil {
+		t.Fatalf("build switch strategy request: %v", err)
+	}
+	switchReq.Header.Set("Content-Type", "application/json")
+
+	switchResp, err := http.DefaultClient.Do(switchReq)
 	if err != nil {
 		t.Fatalf("switch strategy request: %v", err)
 	}
@@ -117,17 +118,4 @@ func TestEndToEndSwitchStrategyThenChatCompletion(t *testing.T) {
 	if resp.StatusCode != http.StatusOK {
 		t.Fatalf("expected chat completion status 200, got %d", resp.StatusCode)
 	}
-}
-
-func mustParseURL(t *testing.T, raw string) *url.URL {
-	t.Helper()
-	parsed, err := url.Parse(raw)
-	if err != nil {
-		t.Fatalf("parse URL: %v", err)
-	}
-	return parsed
-}
-
-func ioNopCloser(r *bytes.Reader) io.ReadCloser {
-	return io.NopCloser(r)
 }
