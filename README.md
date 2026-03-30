@@ -1,204 +1,242 @@
 # InferFlow (CS 6650) — Milestone 1 Report
 
 Repository: `https://github.com/isakshay007/InferFlow`  
-Branch used for Milestone 1: `demo`  
-Primary test command: `go test ./...`
+Branch: `demo`  
+Report date: March 30, 2026
 
-## 1) Problem, Team, and Project Overview
+## 1) Problem, Team, and Overview of Experiments
 
-### Problem Statement
-LLM-backed applications need predictable latency and reliability, but model backends are slow, bursty, and expensive. A fixed single-backend design fails under load and gives no way to evaluate routing behavior before cloud deployment.
+### Problem
+LLM applications need reliable, low-latency routing across model backends, but backend performance is bursty and expensive. A single-backend setup is brittle under load and gives no practical way to compare routing policies before production deployment.
 
-InferFlow addresses this by providing an OpenAI-compatible router (`POST /v1/chat/completions`) that can switch routing strategy at runtime and route across multiple backends.
+InferFlow solves this by exposing a stable OpenAI-compatible API (`POST /v1/chat/completions`) while routing requests across multiple backends using implemented strategies:
+- `round_robin`
+- `least_pending`
+- `cost_aware`
 
-### Team and Ownership (Milestone 1 snapshot)
-This report is formatted for individual submission while reflecting team workstreams.
+This matters for future stakeholders because platform teams need to choose routing behavior using real measurements (latency, throughput, error rate), not assumptions.
 
-| Owner | Workstream | Milestone 1 Delivery |
+### Team
+Current Milestone 1 role split (update names if your roster differs):
+
+| Member | Primary contribution | Milestone 1 ownership |
 |---|---|---|
-| Akshay | Integration + local infra | Docker profiles, end-to-end wiring, strategy switching |
-| Teammate A | Load/experiments | Matrix runs, harness scripts, control runs |
-| Teammate B | Analysis/reporting | Summaries, plots, report narrative |
-| Teammate C | Cloud path | Terraform/EKS/Triton scaffolding and deferred plan |
+| Akshay Keerthi | Integration lead | Router/adapters wiring, Docker baseline, end-to-end validation |
+| Team Member 2 | Experiment lead | Load harness runs, matrix scripts, mock vs real control workflow |
+| Team Member 3 | Analysis lead | Result summarization, plots, interpretation, report artifacts |
+| Team Member 4 | Infra lead | Triton/AWS/EKS scaffolding, GPU-path readiness, deferred cloud plan |
 
-### What the System Does
-Client request flow:
-1. Client calls router at `POST /v1/chat/completions`.
-2. Router selects backend using `round_robin`, `least_pending`, or `cost_aware`.
-3. Router sends backend contract to adapter at `POST /infer`.
-4. Adapter converts message list to prompt and calls Ollama `POST /api/generate`.
-5. Router returns OpenAI-like response (`choices`, `usage`, etc.).
+### Repo and System Overview
+Codebase layout and purpose:
+- `cmd/router/`: router binary serving `POST /v1/chat/completions`
+- `cmd/runtime-adapter/`: Go adapter translating backend contract to Ollama calls
+- `cmd/mock-backend/`: deterministic control backend
+- `internal/router/`: strategy implementations (`round_robin`, `least_pending`, `cost_aware`)
+- `internal/server/`: API handlers (`/healthz`, `/readyz`, `/strategy`, chat completions)
+- `internal/proxy/`: router-to-backend HTTP client (`/infer`, health checks)
+- `internal/runtime/ollama/`: Ollama client + tests
+- `loadgen/`: experiment drivers
+- `scripts/experiments/`: matrix automation scripts
+- `analysis/`: markdown summary + plot generation
+- `docker-compose.yml`: local orchestration profiles (`mock`, `real`, `three-backends`, `mixed`)
+- `terraform/`, `k8s/`, `triton/`: preserved cloud deployment scaffolding (currently deferred)
 
-## 2) Repo Overview (Codebase Structure and Components)
+### Overview of Experiments
+Milestone 1 experiments evaluate:
+- routing strategy behavior under identical workload
+- latency (`p50`, `p95`, `p99`)
+- throughput (requests/sec)
+- error rate
 
-### Top-Level Structure
-- `cmd/router/`: router entrypoint.
-- `cmd/mock-backend/`: deterministic local mock backend.
-- `cmd/runtime-adapter/`: adapter for local Ollama.
-- `internal/server/`: router HTTP handlers, strategy endpoint, readiness/health logic.
-- `internal/router/`: strategy implementations (`round_robin`, `least_pending`, `cost_aware`).
-- `internal/proxy/`: backend request client (`/healthz`, `/infer`).
-- `internal/runtime/ollama/`: Ollama client used by runtime adapter.
-- `loadgen/`: experiment load generation (`generator.py`, optional `locustfile.py`).
-- `scripts/experiments/`: experiment matrix runners and comparison scripts.
-- `analysis/`: summary + chart generation scripts.
-- `docs/`: operational docs and experiment instructions.
-- `docker-compose.yml`: local orchestration (`mock`, `real`, `three-backends`, `mixed`).
-- `terraform/`, `k8s/`, `.github/workflows/`: preserved cloud/deploy scaffolding.
+AI in this phase:
+- accelerates script creation, reporting templates, and consistency checks
+- does not replace human validation of metrics or system diagnosis
 
-### Test Coverage in Repo
-- Go unit/integration tests for router, strategies, adapter, and triton client compatibility.
-- Command used: `go test ./...`
+Observability support in this phase:
+- endpoint health (`/healthz`, `/readyz`)
+- strategy switch endpoint (`PUT /strategy`)
+- per-request JSONL logs from load generator
+- aggregated markdown and plot artifacts for reproducible comparison
 
-## 3) Current Status (Initial Phase), Blockers, and Next Steps
+## 2) Project Plan and Recent Progress
 
-### As of March 30, 2026
-Completed in local environment:
-- End-to-end local path: router -> adapter -> Ollama.
-- Multi-backend local profiles:
-  - `mock` (control)
-  - `real` (2 real adapters/backends)
-  - `three-backends` (3 real adapters/backends)
-  - `mixed` (2 real + mock fallback)
-- Runtime strategy switching via `PUT /strategy`.
-- Experiment harness and analysis pipeline with per-run JSONL and markdown/PNG summaries.
-
-Blocked / deferred:
-- AWS GPU request is pending; stable GPU-backed EKS runtime is not available yet.
-- Because of this, production-like Triton/EKS validation is deferred.
-- Cloud assets remain in repo and are ready to resume once GPU access is approved.
-
-Next steps:
-1. Complete stable local baseline and mock-vs-real comparison.
-2. Add stronger per-request observability for backend timeout/failure attribution.
-3. Re-enable Triton/EKS path when GPU access becomes reliable.
-4. Compare local findings against cloud runs once available.
-
-## 4) Project Plan and Recent Progress
-
-### Timeline (Milestone 1)
+### Timeline and Progress
 - Week 1:
-  - Router + mock backend + OpenAI-compatible API surface.
+  - Router API baseline and mock backend path established.
 - Week 2:
-  - Strategy implementations and runtime strategy switching endpoint.
+  - Strategy switching and strategy implementations finalized.
 - Week 3:
-  - Local runtime adapter for Ollama and multi-backend Docker profiles.
-- Week 4 (current milestone close):
-  - Experiment matrix scripts, summary/plot scripts, and documentation cleanup.
+  - Runtime adapter implemented for local Ollama.
+  - Multi-backend compose profiles enabled.
+- Week 4 (Milestone 1 close):
+  - Experiment matrix scripts, summarization pipeline, and report-ready plots completed.
 
-### What Was Done Recently
-- Added `real`, `three-backends`, and `mixed` compose workflows.
-- Added matrix scripts for real and mock control runs.
-- Added summary script with p50/p95/p99, throughput, error-rate outputs.
-- Added compare mode for mock-vs-real reporting.
+### What Is Working Now
+- End-to-end local request path is working:
+  - client -> router (`:8080`) -> adapter (`:9000/infer`) -> Ollama (`:11434/api/generate`)
+- `real` profile runs 2 local real backends.
+- strategy switching works at runtime via `PUT /strategy`.
+- baseline matrix automation and plot generation are operational.
 
-### AI Usage (Cost/Benefit)
-AI-assisted work (code + docs) was used for:
-- rapid script scaffolding,
-- documentation restructuring,
-- consistency checks across experiment workflow.
+### What Is Blocked Right Now
+GPU cloud validation is blocked by AWS quota approval. The EC2 G/VT on-demand quota request was submitted on March 28, 2026 with requested value `32`, and is currently in `Case Opened` status (see evidence image at end). Because of that, Milestone 1 intentionally focuses on CPU-only Docker baselines.
 
-Observed benefit:
-- faster implementation of repetitive glue code and report structure.
+### Who Is Doing What Next
+- Akshay: stabilize local baseline reruns and finalize milestone reproducibility path.
+- Team Member 2: run mock-control matrix and collect side-by-side baseline artifacts.
+- Team Member 3: refine summary reporting and confidence intervals.
+- Team Member 4: continue GPU quota follow-up and prep cloud rerun scripts.
 
-Observed cost/risk:
-- generated scripts still required manual validation to avoid misleading metrics under overload.
-- final interpretation remains human-reviewed to prevent wrong conclusions.
+### AI Cost/Benefit in Development Plan
+Benefits:
+- faster iteration on scripts/docs
+- lower implementation overhead for repetitive glue code
 
-## 5) Objectives (Short-Term, Long-Term, Observability)
+Costs/risks:
+- generated logic can hide edge-case errors under overload
+- metric interpretation can be wrong without manual review
 
-### Short-Term Objectives (Milestone 2)
-- Produce reproducible local baselines with strategy comparison under non-overloaded settings.
-- Improve experiment hygiene:
-  - separate quality runs (low concurrency) vs stress runs (high concurrency),
-  - preserve clear labels in report outputs.
-- Add request-level traces/log fields for backend selection and failure cause.
+Control approach:
+- all experiment scripts and summaries are human-reviewed
+- conclusions are tied to observed logs, health behavior, and plotted outputs
 
-### Long-Term Objectives (Semester End)
-- Validate routing behavior on GPU-backed infrastructure.
-- Add stronger observability stack (router metrics + backend health + tracing).
-- Establish repeatable decision framework for selecting routing policy under workload classes.
+## 3) Objectives
 
-### Observability Plan
-- Current:
-  - `/healthz`, `/readyz`, strategy endpoint, response usage fields.
-  - experiment summaries and error-rate plots.
-- Planned:
-  - explicit counters by error class (`502`, `503`, timeout, unhealthy backend),
-  - latency histograms by strategy and backend,
-  - traces linking request -> selected backend -> upstream latency.
+### Short-Term Objectives (course timeline)
+- Produce reproducible local Docker baselines for all three routing strategies.
+- Complete mock vs real comparison to separate router effects from model-compute effects.
+- Improve observability by explicitly tagging timeout vs unhealthy-backend failures.
 
-## 6) Related Work
+### Long-Term Objectives (beyond this course)
+- Deploy same routing logic on GPU-backed Triton/AWS/EKS stack.
+- Build a policy-selection guide mapping workload shape to best routing strategy.
+- Provide a reusable LLM routing benchmark kit for future teams.
 
-### Course Readings Applied
-1. Tail latency and variability in large systems (used to justify routing + overload testing).
-2. SRE-style reliability metrics (used for error-rate and readiness interpretation).
-3. Distributed tracing/observability principles (used in observability roadmap).
+### AI Performance, Reliability, and Cost-Control Plan
+- performance: fixed matrix runs by strategy/concurrency, tracked with p95 and throughput
+- reliability: health-gated startup plus error-rate tracking and failure-class attribution
+- cost control: CPU-first local experimentation now; GPU cloud experiments only after quota approval, using same harness to avoid duplicate tooling
 
-### Related Piazza Project Directions
-1. LLM gateway/router project (backend abstraction focus) — add team/thread link.
-2. Inference load/performance benchmarking project — add team/thread link.
-3. Cloud deployment + observability project — add team/thread link.
+### Observability Objectives
+- near-term: request/response logging + strategy labels + health snapshots
+- next: per-backend latency histograms, timeout counters, and trace correlation IDs
 
-## 7) Methodology (Experiments, Tradeoffs, and Worst-Case Workload)
+## 4) Related Work
 
-### Experiment Method
-- For each strategy: run fixed-duration load tests and collect per-request JSONL.
-- Aggregate to table + plots:
-  - error rate,
-  - p50/p95/p99 latency,
-  - throughput.
-- Use control mode (`mock`) versus real mode (`Ollama`) to separate system overhead from model compute constraints.
+### Course Reading Context
+This project directly aligns with core distributed-systems and reliability themes:
+1. Tail-latency behavior under queueing pressure (why p95/p99 must guide policy decisions).
+2. SRE reliability framing (error rates, readiness, and controlled degradation).
+3. Observability-first operations (using metrics + traces rather than anecdotal debugging).
 
-### Worst-Case Workload Considered
-- Concurrent client load where CPU-bound model generation exceeds service capacity.
-- Expected outcomes:
-  - rising latency,
-  - backend timeouts (`502`),
-  - temporary no-healthy-backend responses (`503`).
+### Related Piazza Projects (similar and different)
+Add exact Piazza links before submission; these are the three relevant categories we are benchmarking against:
+1. LLM gateway/router project:
+   - Similar: API gateway abstraction for multiple model backends.
+   - Different: InferFlow emphasizes strategy switching + structured experiment matrix.
+2. Inference performance benchmarking project:
+   - Similar: latency/throughput/error analysis for LLM serving.
+   - Different: InferFlow compares routing policies, not only raw model serving speed.
+3. Cloud deployment/observability project:
+   - Similar: infra + instrumentation goals.
+   - Different: InferFlow currently prioritizes CPU-local reproducibility due pending GPU access.
 
-### Tradeoffs
-- Local CPU testing is cheap and reproducible, but not equivalent to GPU production behavior.
-- High concurrency can create misleading throughput if failures dominate (fast fail responses).
-- Therefore, low-concurrency runs are treated as quality baselines; higher concurrency runs are stress characterization.
+## 5) Methodology
 
-## 8) Preliminary Results and Interpretation
+### Experimental Method
+For each strategy (`round_robin`, `least_pending`, `cost_aware`), run the same request pattern and collect per-request JSON lines. Summarize by:
+- total requests
+- success/error counts and error %
+- p50/p95/p99 latency
+- throughput (requests/sec)
 
-Data currently collected:
-- Full strategy matrix outputs in `results/baseline/`.
-- Summary table in `results/baseline/summary.md`.
-- Plots in `results/baseline/plots/`.
+Current matrix in use for stable baseline interpretation:
+- concurrency: `1, 2, 4`
+- fixed duration per run
+- warmup requests before measurement
 
-Key observations from current baseline summary:
-- At concurrency `1`, all strategies return useful latency signals (multi-second CPU-bound model generation).
-- At concurrency `2` and `4`, failure rates rise sharply (mostly `503`, plus `502` timeouts), indicating local CPU saturation and health-flap behavior under stress.
-- This behavior is consistent with current hardware and timeout limits; it is not a routing path break.
+### AI Usage in Method
+AI is used for:
+- script scaffolding and refactoring
+- report drafting and consistency checks
 
-What remains before final report:
-- Repeat stable runs for stronger confidence intervals.
-- Generate control (`mock`) vs real (`Ollama`) comparison artifacts for cleaner attribution.
-- Re-run cloud-side once GPU/EKS path is unblocked.
+AI is not used for:
+- automatic acceptance of conclusions
+- replacing manual diagnosis of overload/failure patterns
 
-## 9) Impact and Reproducibility
+### Observability Method
+- readiness/health gating before experiment runs
+- periodic live progress (`requests/ok/err/avg_ms`)
+- post-run summaries + charts for cross-strategy comparison
+- cross-check with container health and endpoint status
 
-Why this matters:
-- InferFlow provides a practical way to evaluate routing strategy behavior before costly production deployment.
-- Even in milestone phase, the system demonstrates a full working inference-routing pipeline and measurable behavior under load.
+### Tradeoffs Evaluated
+- low concurrency gives cleaner latency signal but limited stress insight
+- high concurrency reveals failure modes but can inflate apparent throughput via fast-fail responses
+- CPU-only baseline is reproducible and low cost, but not representative of final GPU performance envelope
 
-Can classmates run it now?
-- Yes, on CPU-only laptops.
-- Quick path:
-  1. `docker compose --profile real up -d --build`
-  2. `curl http://localhost:8080/readyz`
-  3. `bash scripts/experiments/run_baseline_matrix.sh`
-  4. `python3 analysis/summarize_baseline.py --plot`
+## 6) Preliminary Results
 
----
+### Data Collected So Far
+From `results/baseline/summary.md` and generated plots:
+- c=1 provides usable quality baseline with meaningful successful responses.
+- c=2 and c=4 show severe saturation behavior (high error rates, many fast failures).
 
-## Milestone 1 Figures (Embedded)
+Selected summary observations:
+- c=1:
+  - `least_pending` had lowest observed error rate (0%) and best throughput among successful runs.
+  - p95 latency remained multi-second across strategies (expected for CPU model generation).
+- c=2 and c=4:
+  - error rate rises to ~99-100% across strategies.
+  - throughput numbers can look large in some runs because fast failures return quickly; this is overload behavior, not good service quality.
 
-### Figure 1 — P95 Latency by Strategy (Local CPU Baseline)
+### Why These Results Make Sense
+These results are consistent with current system constraints:
+- local CPU-only inference (`qwen2.5:0.5b`) saturates quickly under parallel load
+- backend timeout and health transitions lead to `502/503` heavy regimes at higher concurrency
+- strategy differences are easiest to interpret at lower concurrency, while higher concurrency is primarily stress/failure characterization
+
+This initial testing phase is intentional while GPU access is pending. We are using local Docker baselines now to validate routing logic, experiment tooling, and observability before cloud-scale runs.
+
+### What Is Left to Collect
+- full mock vs real side-by-side comparison tables/plots
+- repeated runs for tighter confidence and outlier control
+- post-GPU reruns on Triton/EKS with identical workload harness
+
+### Pathological Workload (Worst/Base Case)
+- base case:
+  - moderate concurrency where model compute can keep up (clean latency comparisons)
+- worst case:
+  - sustained parallel load where generation time exceeds backend timeout budget, causing cascading unhealthy backend states and near-total request failures
+
+### Plot Evidence (all three baseline plots)
+
+#### P95 Latency by Strategy
 ![Milestone 1 P95 Latency](docs/assets/milestone1_latency_p95_by_strategy.png)
 
-### Figure 2 — Error Rate by Strategy (Local CPU Baseline)
+#### Throughput by Strategy
+![Milestone 1 Throughput](docs/assets/milestone1_throughput_by_strategy.png)
+
+#### Error Rate by Strategy
 ![Milestone 1 Error Rate](docs/assets/milestone1_error_rate_by_strategy.png)
+
+## 7) Impact
+
+InferFlow provides a practical, reproducible way to evaluate LLM routing decisions before production deployment. That matters because many teams currently choose routing behavior heuristically, then discover failure modes only after deploying expensive infrastructure.
+
+Why people should care:
+- it makes routing strategy tradeoffs measurable and comparable
+- it reduces deployment risk by validating behavior locally first
+- it creates a clear migration path from local baseline to cloud/GPU validation
+
+Can classmates test this now?
+- Yes. The CPU-local path is designed for laptop reproducibility and can be run with Docker + provided scripts.
+- This makes collaborative validation feasible before GPU resources are available.
+
+### End-of-Section Evidence Images
+
+#### GPU quota request pending (blocker context)
+![GPU Quota Request](docs/assets/milestone1_gpu_quota_request.jpg)
+
+#### Local stack health verification (router + backends)
+![Local Health Checks](docs/assets/milestone1_health_checks.png)
