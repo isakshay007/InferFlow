@@ -50,17 +50,6 @@ Observability support in this phase:
 
 ## 2) Project Plan and Recent Progress
 
-### Timeline and Progress
-- Week 1:
-  - Router API baseline and mock backend path established.
-- Week 2:
-  - Strategy switching and strategy implementations finalized.
-- Week 3:
-  - Runtime adapter implemented for local Ollama.
-  - Multi-backend compose profiles enabled.
-- Week 4 (Milestone 1 close):
-  - Experiment matrix scripts, summarization pipeline, and report-ready plots completed.
-
 ### What Is Working Now
 - End-to-end local request path is working:
   - client -> router (`:8080`) -> adapter (`:9000/infer`) -> Ollama (`:11434/api/generate`)
@@ -70,12 +59,6 @@ Observability support in this phase:
 
 ### What Is Blocked Right Now
 GPU cloud validation is blocked by AWS quota approval. The EC2 G/VT on-demand quota request was submitted on March 28, 2026 with requested value `32`, and is currently in `Case Opened` status (see evidence image at end). Because of that, Milestone 1 intentionally focuses on CPU-only Docker baselines.
-
-### Who Is Doing What Next
-- Akshay: stabilize local baseline reruns and finalize milestone reproducibility path.
-- Team Member 2: run mock-control matrix and collect side-by-side baseline artifacts.
-- Team Member 3: refine summary reporting and confidence intervals.
-- Team Member 4: continue GPU quota follow-up and prep cloud rerun scripts.
 
 ### AI Cost/Benefit in Development Plan
 Benefits:
