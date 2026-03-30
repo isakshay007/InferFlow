@@ -96,23 +96,131 @@ Control approach:
 
 ## 4) Related Work
 
-### Course Reading Context
-This project directly aligns with core distributed-systems and reliability themes:
-1. Tail-latency behavior under queueing pressure (why p95/p99 must guide policy decisions).
-2. SRE reliability framing (error rates, readiness, and controlled degradation).
-3. Observability-first operations (using metrics + traces rather than anecdotal debugging).
+### Course Context
 
-### Related Piazza Projects (similar and different)
-Add exact Piazza links before submission; these are the three relevant categories we are benchmarking against:
-1. LLM gateway/router project:
-   - Similar: API gateway abstraction for multiple model backends.
-   - Different: InferFlow emphasizes strategy switching + structured experiment matrix.
-2. Inference performance benchmarking project:
-   - Similar: latency/throughput/error analysis for LLM serving.
-   - Different: InferFlow compares routing policies, not only raw model serving speed.
-3. Cloud deployment/observability project:
-   - Similar: infra + instrumentation goals.
-   - Different: InferFlow currently prioritizes CPU-local reproducibility due pending GPU access.
+InferFlow sits at the intersection of **distributed systems, LLM serving, and systems evaluation**. The key lens across all comparisons here is:
+
+* **control vs. variability** (routing vs. workload vs. infra)
+* **where intelligence lives** (router vs. model vs. pipeline)
+* **what is being measured** (policy effectiveness vs. system correctness vs. scaling behavior)
+
+### Comparison with Piazza Projects
+
+#### 1) Smart Grocery Assistant - Tiered Inference System
+
+**Core idea:**
+Route requests across *tiers of intelligence* (local dictionary → SQLite KB → cloud LLM) to reduce latency and cost.
+
+**Where it overlaps with InferFlow:**
+
+* Both systems are fundamentally about **routing decisions under constraints**
+* Both explicitly measure:
+
+  * latency (p50/p99)
+  * cost efficiency
+  * system behavior under load
+* Both treat **LLM calls as expensive resources** that must be managed
+
+**Where it differs (this matters more):**
+
+* Their routing dimension is **capability-based (tiered inference)**
+  → “Which level of intelligence do we need?”
+* InferFlow’s routing is **resource-based (multi-backend scheduling)**
+  → “Which backend should handle this request *right now*?”
+
+That’s not a small difference. It means:
+
+* They optimize **semantic efficiency (avoid unnecessary LLM calls)**
+* You optimize **systems efficiency (load balancing + tail latency)**
+
+**Critical insight:**
+Their system reduces *how often* you hit the LLM.
+Your system optimizes *what happens when you must hit the LLM.*
+
+These are **complementary layers**, not competitors.
+
+#### 2) Raft-Based Distributed KV Store
+
+**Core idea:**
+Validate **consensus guarantees** (fault tolerance, consistency, partition handling) under controlled failures.
+
+**Where it overlaps:**
+
+* Both systems:
+
+  * deal with **multi-node coordination**
+  * evaluate behavior under **failure scenarios**
+  * rely on **measurable system guarantees**, not intuition
+
+**Where it fundamentally diverges:**
+
+* Raft project optimizes for:
+
+  * **correctness (CP guarantees)**
+  * deterministic state replication
+* InferFlow optimizes for:
+
+  * **performance under uncertainty**
+  * probabilistic routing outcomes
+
+Bluntly:
+
+* Raft asks: *“Is the system correct under failure?”*
+* InferFlow asks: *“How fast and stable is the system under load?”*
+
+**Critical insight:**
+They operate in **different layers of the stack**:
+
+* Raft = *control plane correctness*
+* InferFlow = *data plane performance optimization*
+
+If your router fails, users see latency spikes.
+If Raft fails, users get **incorrect data**. That’s a different class of problem.
+
+#### 3) Pattern Learning & Distributed LLM Pipeline (Short-Form Video)
+
+**Core idea:**
+A multi-stage LLM pipeline with:
+
+* fan-out parallelism
+* rate limiting (token bucket)
+* checkpointing
+* cache consistency (SETNX)
+
+**Where it overlaps:**
+
+* Both systems explicitly deal with:
+
+  * **LLM concurrency bottlenecks**
+  * **rate limits and backpressure**
+  * **failure amplification under scale**
+* Both measure:
+
+  * throughput
+  * error rates
+  * scaling behavior
+
+**Where it differs:**
+
+* Their system is **pipeline-oriented (task orchestration)**
+* InferFlow is **request-oriented (real-time routing)**
+
+More concretely:
+
+* They optimize:
+
+  * **batch workflows**
+  * long-lived jobs
+  * recovery + checkpointing
+* You optimize:
+
+  * **stateless request latency**
+  * tail performance (p95/p99)
+  * immediate routing decisions
+
+**Critical insight:**
+Their biggest problem is **coordinating many LLM calls per request**.
+Your biggest problem is **choosing the right backend for a single call under contention**.
 
 ## 5) Methodology
 
