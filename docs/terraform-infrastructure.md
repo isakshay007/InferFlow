@@ -16,7 +16,7 @@ InferFlow uses:
 
 Main backend file:
 
-- [backend.tf](C:/Users/ajinf/Documents/CS%206650/InferFlow/terraform/environments/dev/backend.tf)
+- [backend.tf](../terraform/environments/dev/backend.tf)
 
 ## One-Time Bootstrap
 
@@ -30,8 +30,8 @@ terraform apply
 
 Files:
 
-- [bootstrap main.tf](C:/Users/ajinf/Documents/CS%206650/InferFlow/terraform/bootstrap/state/main.tf)
-- [bootstrap tfvars example](C:/Users/ajinf/Documents/CS%206650/InferFlow/terraform/bootstrap/state/terraform.tfvars.example)
+- [bootstrap main.tf](../terraform/bootstrap/state/main.tf)
+- [bootstrap tfvars example](../terraform/bootstrap/state/terraform.tfvars.example)
 
 ## Main Environment Usage
 

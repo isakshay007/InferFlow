@@ -1,5 +1,6 @@
 services:
   mock-backend:
+    profiles: ["mock", "mixed"]
     build:
       context: .
       dockerfile: Dockerfile.mock-backend
@@ -7,6 +8,51 @@ services:
       - "9000:9000"
 
   router:
+    profiles: ["real"]
+    build:
+      context: .
+      dockerfile: Dockerfile.router
+    environment:
+      INFERFLOW_BACKENDS: http://adapter-a:9000,http://adapter-b:9000
+      INFERFLOW_LISTEN_ADDR: :8080
+    ports:
+      - "8080:8080"
+    depends_on:
+      - adapter-a
+      - adapter-b
+
+  router-three-backends:
+    profiles: ["three-backends"]
+    build:
+      context: .
+      dockerfile: Dockerfile.router
+    environment:
+      INFERFLOW_BACKENDS: http://adapter-a:9000,http://adapter-b:9000,http://adapter-c:9000
+      INFERFLOW_LISTEN_ADDR: :8080
+    ports:
+      - "8080:8080"
+    depends_on:
+      - adapter-a
+      - adapter-b
+      - adapter-c
+
+  router-mixed:
+    profiles: ["mixed"]
+    build:
+      context: .
+      dockerfile: Dockerfile.router
+    environment:
+      INFERFLOW_BACKENDS: http://adapter-a:9000,http://adapter-b:9000,http://mock-backend:9000
+      INFERFLOW_LISTEN_ADDR: :8080
+    ports:
+      - "8080:8080"
+    depends_on:
+      - adapter-a
+      - adapter-b
+      - mock-backend
+
+  router-mock:
+    profiles: ["mock"]
     build:
       context: .
       dockerfile: Dockerfile.router
@@ -17,3 +63,86 @@ services:
       - "8080:8080"
     depends_on:
       - mock-backend
+
+  ollama-a:
+    profiles: ["real", "three-backends", "mixed"]
+    image: ollama/ollama:latest
+    environment:
+      OLLAMA_HOST: 0.0.0.0
+    volumes:
+      - ollama-a:/root/.ollama
+
+  adapter-a:
+    profiles: ["real", "three-backends", "mixed"]
+    build:
+      context: .
+      dockerfile: Dockerfile.runtime-adapter
+    environment:
+      LLM_BASE_URL: http://ollama-a:11434
+      LLM_MODEL: qwen2.5:0.5b
+      ADAPTER_ADDR: :9000
+    depends_on:
+      - ollama-a
+    healthcheck:
+      test: ["CMD", "/runtime-adapter", "healthcheck"]
+      interval: 15s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+
+  ollama-b:
+    profiles: ["real", "three-backends", "mixed"]
+    image: ollama/ollama:latest
+    environment:
+      OLLAMA_HOST: 0.0.0.0
+    volumes:
+      - ollama-b:/root/.ollama
+
+  adapter-b:
+    profiles: ["real", "three-backends", "mixed"]
+    build:
+      context: .
+      dockerfile: Dockerfile.runtime-adapter
+    environment:
+      LLM_BASE_URL: http://ollama-b:11434
+      LLM_MODEL: qwen2.5:0.5b
+      ADAPTER_ADDR: :9000
+    depends_on:
+      - ollama-b
+    healthcheck:
+      test: ["CMD", "/runtime-adapter", "healthcheck"]
+      interval: 15s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+
+  ollama-c:
+    profiles: ["three-backends"]
+    image: ollama/ollama:latest
+    environment:
+      OLLAMA_HOST: 0.0.0.0
+    volumes:
+      - ollama-c:/root/.ollama
+
+  adapter-c:
+    profiles: ["three-backends"]
+    build:
+      context: .
+      dockerfile: Dockerfile.runtime-adapter
+    environment:
+      LLM_BASE_URL: http://ollama-c:11434
+      LLM_MODEL: qwen2.5:0.5b
+      ADAPTER_ADDR: :9000
+    depends_on:
+      - ollama-c
+    healthcheck:
+      test: ["CMD", "/runtime-adapter", "healthcheck"]
+      interval: 15s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+
+volumes:
+  ollama-a:
+  ollama-b:
+  ollama-c:

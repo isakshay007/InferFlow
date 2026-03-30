@@ -27,7 +27,7 @@ This creates:
 - the S3 bucket that stores the Terraform state file
 - the DynamoDB table that provides state locking
 
-See [terraform/bootstrap/state/terraform.tfvars.example](/C:/Users/ajinf/Documents/CS%206650/InferFlow/terraform/bootstrap/state/terraform.tfvars.example) for the required inputs.
+See [terraform/bootstrap/state/terraform.tfvars.example](bootstrap/state/terraform.tfvars.example) for the required inputs.
 
 ## Shared Backend Usage
 

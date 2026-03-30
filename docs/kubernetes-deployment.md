@@ -4,9 +4,9 @@ The Kubernetes manifests deploy the Triton-backed stack on EKS.
 
 ## Manifests
 
-- [router.yaml](C:/Users/ajinf/Documents/CS%206650/InferFlow/k8s/router.yaml)
-- [triton-adapter.yaml](C:/Users/ajinf/Documents/CS%206650/InferFlow/k8s/triton-adapter.yaml)
-- [triton.yaml](C:/Users/ajinf/Documents/CS%206650/InferFlow/k8s/triton.yaml)
+- [router.yaml](../k8s/router.yaml)
+- [triton-adapter.yaml](../k8s/triton-adapter.yaml)
+- [triton.yaml](../k8s/triton.yaml)
 
 ## Prerequisites
 

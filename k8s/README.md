@@ -2,8 +2,8 @@
 
 This folder now supports two separate roles:
 
-- router deployment through [router.yaml](/C:/Users/ajinf/Documents/CS%206650/InferFlow/k8s/router.yaml)
-- Triton-backed inference through [triton.yaml](/C:/Users/ajinf/Documents/CS%206650/InferFlow/k8s/triton.yaml) and [triton-adapter.yaml](/C:/Users/ajinf/Documents/CS%206650/InferFlow/k8s/triton-adapter.yaml)
+- router deployment through [router.yaml](router.yaml)
+- Triton-backed inference through [triton.yaml](triton.yaml) and [triton-adapter.yaml](triton-adapter.yaml)
 
 ## Prerequisites
 

@@ -1,1 +1,2 @@
-# The starter load generator uses only the Python standard library.
+# Optional load generation dependencies.
+locust>=2.24

@@ -4,11 +4,11 @@ InferFlow uses GitHub Actions for CI, infrastructure, deploy, and cleanup.
 
 ## Workflows
 
-- [ci.yml](C:/Users/ajinf/Documents/CS%206650/InferFlow/.github/workflows/ci.yml)
-- [terraform-plan.yml](C:/Users/ajinf/Documents/CS%206650/InferFlow/.github/workflows/terraform-plan.yml)
-- [terraform-apply.yml](C:/Users/ajinf/Documents/CS%206650/InferFlow/.github/workflows/terraform-apply.yml)
-- [deploy-aws-triton.yml](C:/Users/ajinf/Documents/CS%206650/InferFlow/.github/workflows/deploy-aws-triton.yml)
-- [destroy-aws.yml](C:/Users/ajinf/Documents/CS%206650/InferFlow/.github/workflows/destroy-aws.yml)
+- [ci.yml](../.github/workflows/ci.yml)
+- [terraform-plan.yml](../.github/workflows/terraform-plan.yml)
+- [terraform-apply.yml](../.github/workflows/terraform-apply.yml)
+- [deploy-aws-triton.yml](../.github/workflows/deploy-aws-triton.yml)
+- [destroy-aws.yml](../.github/workflows/destroy-aws.yml)
 
 ## Required Repository Variables
 

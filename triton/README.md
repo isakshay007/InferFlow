@@ -10,7 +10,7 @@ This directory contains the first Triton model repository for InferFlow's AWS GP
 ## Runtime Assumptions
 
 - Triton runs as a separate service or container.
-- The recommended image is built from [Dockerfile.triton](/C:/Users/ajinf/Documents/CS%206650/InferFlow/Dockerfile.triton), which extends the official Triton image with `torch` and `transformers`.
+- The recommended image is built from [Dockerfile.triton](../Dockerfile.triton), which extends the official Triton image with `torch` and `transformers`.
 - The Python backend downloads the Hugging Face model at runtime using `MODEL_ID`, which defaults to `Qwen/Qwen3-0.6B`.
 
 ## AWS Notes

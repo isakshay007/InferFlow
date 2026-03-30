@@ -10,8 +10,8 @@ First model target:
 
 Model repository files:
 
-- [config.pbtxt](C:/Users/ajinf/Documents/CS%206650/InferFlow/triton/qwen3_0_6b/config.pbtxt)
-- [model.py](C:/Users/ajinf/Documents/CS%206650/InferFlow/triton/qwen3_0_6b/1/model.py)
+- [config.pbtxt](../triton/qwen3_0_6b/config.pbtxt)
+- [model.py](../triton/qwen3_0_6b/1/model.py)
 
 ## Components
 
@@ -21,8 +21,8 @@ Model repository files:
 
 ## Container Images
 
-- [Dockerfile.triton](C:/Users/ajinf/Documents/CS%206650/InferFlow/Dockerfile.triton)
-- [Dockerfile.triton-adapter](C:/Users/ajinf/Documents/CS%206650/InferFlow/Dockerfile.triton-adapter)
+- [Dockerfile.triton](../Dockerfile.triton)
+- [Dockerfile.triton-adapter](../Dockerfile.triton-adapter)
 
 Build manually if needed:
 

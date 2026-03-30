@@ -4,7 +4,7 @@ InferFlow includes a manual-only AWS cleanup workflow.
 
 Workflow file:
 
-- [destroy-aws.yml](C:/Users/ajinf/Documents/CS%206650/InferFlow/.github/workflows/destroy-aws.yml)
+- [destroy-aws.yml](../.github/workflows/destroy-aws.yml)
 
 ## What It Does
 

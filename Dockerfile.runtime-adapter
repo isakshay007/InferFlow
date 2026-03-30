@@ -1,0 +1,12 @@
+FROM golang:1.22-alpine AS builder
+WORKDIR /src
+COPY go.mod ./
+COPY cmd ./cmd
+COPY internal ./internal
+RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o /out/runtime-adapter ./cmd/runtime-adapter
+
+FROM gcr.io/distroless/static
+COPY --from=builder /out/runtime-adapter /runtime-adapter
+EXPOSE 9000
+USER 65532:65532
+ENTRYPOINT ["/runtime-adapter"]
