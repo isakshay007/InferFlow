@@ -1,4 +1,4 @@
-# InferFlow (CS 6650) — Milestone 1 Report
+# InferFlow (CS 6650) - Milestone 1 Report
 
 Repository: `https://github.com/isakshay007/InferFlow`  
 Branch: `demo`  
@@ -15,16 +15,6 @@ InferFlow solves this by exposing a stable OpenAI-compatible API (`POST /v1/chat
 - `cost_aware`
 
 This matters for future stakeholders because platform teams need to choose routing behavior using real measurements (latency, throughput, error rate), not assumptions.
-
-### Team
-Current Milestone 1 role split (update names if your roster differs):
-
-| Member | Primary contribution | Milestone 1 ownership |
-|---|---|---|
-| Akshay Keerthi | Integration lead | Router/adapters wiring, Docker baseline, end-to-end validation |
-| Team Member 2 | Experiment lead | Load harness runs, matrix scripts, mock vs real control workflow |
-| Team Member 3 | Analysis lead | Result summarization, plots, interpretation, report artifacts |
-| Team Member 4 | Infra lead | Triton/AWS/EKS scaffolding, GPU-path readiness, deferred cloud plan |
 
 ### Repo and System Overview
 Codebase layout and purpose:
