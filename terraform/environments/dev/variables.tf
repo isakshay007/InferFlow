@@ -25,11 +25,11 @@ variable "public_subnets" {
   }))
   default = {
     a = {
-      cidr              = "10.42.0.0/20"
+      cidr              = "10.42.1.0/24"
       availability_zone = "us-east-1a"
     }
     b = {
-      cidr              = "10.42.16.0/20"
+      cidr              = "10.42.2.0/24"
       availability_zone = "us-east-1b"
     }
   }
@@ -42,11 +42,11 @@ variable "private_subnets" {
   }))
   default = {
     a = {
-      cidr              = "10.42.128.0/20"
+      cidr              = "10.42.10.0/24"
       availability_zone = "us-east-1a"
     }
     b = {
-      cidr              = "10.42.144.0/20"
+      cidr              = "10.42.11.0/24"
       availability_zone = "us-east-1b"
     }
   }
@@ -54,12 +54,12 @@ variable "private_subnets" {
 
 variable "node_instance_types" {
   type    = list(string)
-  default = ["g4dn.xlarge"]
+  default = ["c5.large"]
 }
 
 variable "desired_size" {
   type    = number
-  default = 1
+  default = 3
 }
 
 variable "min_size" {
@@ -69,5 +69,5 @@ variable "min_size" {
 
 variable "max_size" {
   type    = number
-  default = 2
+  default = 4
 }

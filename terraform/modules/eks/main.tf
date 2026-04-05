@@ -69,12 +69,25 @@ resource "aws_eks_cluster" "this" {
   tags = var.tags
 }
 
-resource "aws_eks_node_group" "gpu" {
+data "tls_certificate" "eks" {
+  url = aws_eks_cluster.this.identity[0].oidc[0].issuer
+}
+
+resource "aws_iam_openid_connect_provider" "this" {
+  url = aws_eks_cluster.this.identity[0].oidc[0].issuer
+
+  client_id_list = ["sts.amazonaws.com"]
+  thumbprint_list = [
+    data.tls_certificate.eks.certificates[0].sha1_fingerprint
+  ]
+}
+
+resource "aws_eks_node_group" "workers" {
   cluster_name    = aws_eks_cluster.this.name
-  node_group_name = "${var.name}-gpu"
+  node_group_name = "${var.cluster_name}-workers"
   node_role_arn   = aws_iam_role.node_group.arn
   subnet_ids      = var.private_subnet_ids
-  ami_type        = "AL2_x86_64_GPU"
+  ami_type        = "AL2_x86_64"
   capacity_type   = "ON_DEMAND"
   instance_types  = var.node_instance_types
 
@@ -96,6 +109,6 @@ resource "aws_eks_node_group" "gpu" {
   ]
 
   tags = merge(var.tags, {
-    Name = "${var.name}-gpu"
+    Name = "${var.name}-workers"
   })
 }

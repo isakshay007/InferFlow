@@ -17,12 +17,12 @@ variable "private_subnet_ids" {
 
 variable "node_instance_types" {
   type    = list(string)
-  default = ["g4dn.xlarge"]
+  default = ["c5.large"]
 }
 
 variable "desired_size" {
   type    = number
-  default = 1
+  default = 3
 }
 
 variable "min_size" {
@@ -32,7 +32,7 @@ variable "min_size" {
 
 variable "max_size" {
   type    = number
-  default = 2
+  default = 4
 }
 
 variable "tags" {

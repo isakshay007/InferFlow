@@ -4,11 +4,13 @@ variable "aws_region" {
 }
 
 variable "state_bucket_name" {
-  type = string
+  type    = string
+  default = "inferflow-tfstate"
 }
 
 variable "lock_table_name" {
-  type = string
+  type    = string
+  default = "inferflow-tfstate-lock"
 }
 
 variable "tags" {
