@@ -21,18 +21,19 @@ Quick links:
 
 Load tests were run against a live AWS EKS cluster (3x c5.xlarge nodes, llama.cpp + Qwen2.5-0.5B-Instruct).
 
-### Strategy Comparison — 10 requests each, 2 concurrent, mixed prompts
+### Strategy Comparison — 100 requests each, 3 concurrent, mixed prompts
 
-| Strategy | p50 (ms) | p95 (ms) | min (ms) |
-|---|---|---|---|
-| least_pending | 4624 | 4696 | 4564 |
-| round_robin | 4628 | 4718 | 4528 |
-| kv_aware | 4640 | 4684 | 4567 |
-| random | 4698 | **6393** | 4571 |
+| Strategy | p50 (ms) | p95 (ms) | min (ms) | max (ms) |
+|---|---|---|---|---|
+| round_robin | 4693 | 5296 | 4548 | 7995 |
+| **least_pending** | **4757** | **4860** | 4630 | **4995** |
+| kv_aware | 4812 | 6906 | 4642 | 8930 |
+| random | 5949 | 7789 | 4560 | 9046 |
 
-- `least_pending` and `round_robin` are effectively tied at low concurrency.
-- `random` is the worst — it occasionally stacks two requests on the same backend, causing a p95 spike to 6393ms.
-- `kv_aware` adds Redis lookup overhead but compensates with consistent backend affinity.
+- `least_pending` wins at scale — tightest p95 (4860ms) and lowest max (4995ms). At 3 concurrent requests across 3 backends it actively avoids overloading a single backend.
+- `round_robin` is a close second on p50 but shows higher tail latency (max 7995ms) when backends fall behind.
+- `random` is clearly the worst — p50 nearly 1.3s slower than round_robin, max latency over 9 seconds due to random backend collisions.
+- `kv_aware` achieves 100/100 Redis cache hits but shows high tail latency (p95 6906ms) because it concentrates repeated prompts on one backend (backend-2 got 46% of traffic), creating a hotspot.
 
 ### KV Cache Benefit — repeated long prompt, concurrency 1
 
