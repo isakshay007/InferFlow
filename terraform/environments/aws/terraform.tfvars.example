@@ -1,0 +1,8 @@
+region             = "us-east-1"
+cluster_name       = "inferflow-eks"
+kubernetes_version = "1.32"
+system_node_size   = "t3.medium"
+system_node_count  = 1
+vllm_node_size     = "c5.xlarge"
+vllm_node_count    = 3
+registry_name      = "inferflow"

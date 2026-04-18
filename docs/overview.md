@@ -4,36 +4,43 @@ InferFlow is a scalable LLM inference routing project. The current repo state pr
 
 - a Go router exposing `POST /v1/chat/completions`
 - health and readiness endpoints
-- round-robin backend selection
+- a Prometheus-style metrics endpoint
+- runtime strategy switching with four active strategies
 - a local mock backend for development
-- a Triton adapter for AWS GPU-backed inference
-- Terraform for AWS infrastructure
-- Kubernetes manifests for the router, Triton, and Triton adapter
-- GitHub Actions for CI, Terraform, deploy, and destroy workflows
+- a vLLM adapter for EKS-backed inference
+- Kubernetes manifests for the router, Redis, and vLLM workers
+- retained Triton code as a deferred backend path
+- Terraform for AWS EKS infrastructure
+- GitHub Actions for CI and Terraform planning
 
 ## Architecture
 
 1. Clients send OpenAI-compatible chat completion requests to the router.
-2. The router chooses a healthy backend using round-robin.
+2. The router chooses a healthy backend using one of four strategies:
+   - `round_robin`
+   - `least_pending`
+   - `random`
+   - `kv_aware`
 3. The router forwards to either:
    - the local mock backend
-   - the Triton adapter
-4. The Triton adapter translates InferFlow backend requests into Triton HTTP inference calls.
-5. Triton runs the model and returns generated text.
+   - the vLLM adapter
+4. The vLLM adapter translates InferFlow backend requests into vLLM completion calls.
+5. Successful requests update cache affinity metadata so `kv_aware` can prefer warm backends.
 
 ## Current Scope
 
 Implemented:
 
 - local mock-backed workflow
-- AWS Triton deployment assets
-- Terraform remote state support
-- GitHub Actions pipeline split for CI, Terraform, deploy, and destroy
+- vLLM-backed EKS deployment assets
+- Redis-backed KV-aware routing metadata with safe local fallback
+- metrics scraping support for Prometheus
+- AWS Terraform environment
+- GitHub Actions pipeline for CI and Terraform plan
 
 Planned later:
 
 - streaming SSE responses
 - dynamic backend discovery
-- least-pending and cost-aware routing
-- observability stack
-- autoscaling and experiment automation
+- richer autoscaling and observability rollout
+- Triton reintroduction as a separate future path

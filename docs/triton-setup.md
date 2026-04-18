@@ -1,10 +1,10 @@
 # Triton Setup
 
-InferFlow uses Triton as an internal model-serving runtime behind a Go adapter service.
+Triton remains in the repo as a deferred backend path. It is no longer the primary deployment target for the current MVP, which now centers on EKS + vLLM.
 
 ## Model
 
-First model target:
+Historical first model target:
 
 - `Qwen/Qwen3-0.6B`
 
@@ -40,4 +40,9 @@ docker build -f Dockerfile.router -t inferflow/router:dev .
 
 ## Important Note
 
-The AWS GPU path is the first supported real Triton path. The mock backend remains the local fallback.
+Keep these assets for future Triton work, but treat the current production-like path as:
+
+- Go router
+- vLLM adapter
+- EKS
+- `Qwen/Qwen2.5-0.5B-Instruct`

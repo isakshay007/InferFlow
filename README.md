@@ -1,6 +1,6 @@
 # InferFlow
 
-InferFlow is a Week 1 MVP for a scalable LLM inference router project. This repository bootstraps the local development path, the Go router, a mock inference backend, starter Kubernetes assets, and Terraform scaffolding for AWS EKS so the team can move from proposal to implementation quickly.
+InferFlow is a scalable LLM inference router project centered on a Go control-plane router and experimentable backend routing strategies. The repo now supports a mock-backed local loop and a primary cloud path based on Amazon Elastic Kubernetes Service (EKS) with vLLM, while keeping Triton code in the repo as a deferred backend path.
 
 ## Documentation
 
@@ -10,6 +10,7 @@ Quick links:
 
 - [Overview](C:/Users/ajinf/Documents/CS%206650/InferFlow/docs/overview.md)
 - [Local Development](C:/Users/ajinf/Documents/CS%206650/InferFlow/docs/local-development.md)
+- [EKS vLLM Deployment](C:/Users/ajinf/Documents/CS%206650/InferFlow/docs/eks-vllm.md)
 - [Triton Setup](C:/Users/ajinf/Documents/CS%206650/InferFlow/docs/triton-setup.md)
 - [Kubernetes Deployment](C:/Users/ajinf/Documents/CS%206650/InferFlow/docs/kubernetes-deployment.md)
 - [Terraform Infrastructure](C:/Users/ajinf/Documents/CS%206650/InferFlow/docs/terraform-infrastructure.md)
@@ -21,18 +22,20 @@ Quick links:
 Implemented now:
 
 - Go router with `POST /v1/chat/completions`
+- runtime routing strategies: `round_robin`, `least_pending`, `random`, `kv_aware`
+- strategy switching through `GET/PUT /strategy`
+- metrics endpoint at `GET /metrics`
 - mock-backed local development flow
-- Triton adapter plus AWS GPU deployment assets
-- Terraform infrastructure with shared remote state support
-- GitHub Actions for CI, plan/apply, deploy, and destroy
+- vLLM adapter plus EKS deployment assets
+- retained Triton code as a deferred backend path
 
 Planned next:
 
 - Streaming SSE responses
 - Kubernetes endpoint discovery
-- Least-pending and cost-aware routing
-- Observability stack wiring
-- Autoscaling and experiment automation
+- richer Prometheus/Grafana dashboards
+- KEDA autoscaling rollout
+- AWS Terraform automation
 
 ## Local Quick Start
 
@@ -71,6 +74,12 @@ Generate a sample CSV:
 python loadgen/generator.py --requests 5 --output results/sample.csv
 ```
 
+Run all active strategies locally:
+
+```bash
+python loadgen/generator.py --requests 5 --strategies round_robin,least_pending,random,kv_aware --output results/strategies.csv
+```
+
 ### Option 2: Docker Compose
 
 ```bash
@@ -78,6 +87,15 @@ docker compose up --build
 ```
 
 The router listens on `http://localhost:8080` and the mock backend is internal to Compose.
+
+## EKS Terraform Quick Start
+
+```bash
+cd terraform/environments/aws
+terraform init -backend=false
+terraform plan
+terraform apply
+```
 
 ## Router API
 
@@ -111,6 +129,23 @@ Returns process liveness.
 ### `GET /readyz`
 
 Returns success only when at least one backend is currently healthy.
+
+### `GET /metrics`
+
+Returns Prometheus-style router metrics.
+
+### `GET /strategy` and `PUT /strategy`
+
+Supported runtime strategies:
+
+- `round_robin`
+- `least_pending`
+- `random`
+- `kv_aware`
+
+## Infrastructure Note
+
+The active infrastructure path is AWS EKS plus vLLM.
 
 ## Scripts
 

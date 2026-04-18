@@ -38,7 +38,7 @@ func (s *CostAware) SetBackends(backends []*Backend) {
 	s.loads = updated
 }
 
-func (s *CostAware) Select(estimatedCost int) (Decision, error) {
+func (s *CostAware) Select(input SelectionInput) (Decision, error) {
 	s.mu.RLock()
 	backends := append([]*Backend(nil), s.backends...)
 	loads := s.loads
@@ -48,7 +48,7 @@ func (s *CostAware) Select(estimatedCost int) (Decision, error) {
 		return Decision{}, ErrNoHealthyBackend
 	}
 
-	cost := int64(estimatedCost)
+	cost := int64(input.EstimatedCost)
 	if cost < 1 {
 		cost = 1
 	}

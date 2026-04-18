@@ -6,6 +6,7 @@ import (
 	"strings"
 	"time"
 
+	"inferflow/internal/cache"
 	"inferflow/internal/router"
 )
 
@@ -14,6 +15,8 @@ type Config struct {
 	Backends             []*router.Backend
 	ProbeInterval        time.Duration
 	BackendRequestTimout time.Duration
+	AffinityStore        cache.Store
+	CacheTTL             time.Duration
 }
 
 func LoadConfigFromEnv() (Config, error) {
@@ -32,11 +35,20 @@ func LoadConfigFromEnv() (Config, error) {
 		backends = append(backends, backend)
 	}
 
+	var affinityStore cache.Store
+	if redisAddr := strings.TrimSpace(getenv("INFERFLOW_REDIS_ADDR", "")); redisAddr != "" {
+		affinityStore = cache.NewRedisStore(redisAddr)
+	} else {
+		affinityStore = cache.NewMemoryStore()
+	}
+
 	return Config{
 		ListenAddr:           listenAddr,
 		Backends:             backends,
 		ProbeInterval:        2 * time.Second,
 		BackendRequestTimout: 10 * time.Second,
+		AffinityStore:        affinityStore,
+		CacheTTL:             durationFromEnv("INFERFLOW_CACHE_TTL", 10*time.Minute),
 	}, nil
 }
 
@@ -57,4 +69,16 @@ func splitAndTrim(value string) []string {
 		}
 	}
 	return out
+}
+
+func durationFromEnv(key string, fallback time.Duration) time.Duration {
+	value := os.Getenv(key)
+	if value == "" {
+		return fallback
+	}
+	parsed, err := time.ParseDuration(value)
+	if err != nil {
+		return fallback
+	}
+	return parsed
 }

@@ -7,11 +7,11 @@ func TestLeastPendingDistributesAcrossHealthyBackends(t *testing.T) {
 	b, _ := NewBackend("b", "http://b.test")
 	lp := NewLeastPending([]*Backend{a, b})
 
-	first, err := lp.Select(1)
+	first, err := lp.Select(SelectionInput{EstimatedCost: 1})
 	if err != nil {
 		t.Fatalf("select first: %v", err)
 	}
-	second, err := lp.Select(1)
+	second, err := lp.Select(SelectionInput{EstimatedCost: 1})
 	if err != nil {
 		t.Fatalf("select second: %v", err)
 	}
@@ -29,7 +29,7 @@ func TestLeastPendingSkipsUnhealthyBackends(t *testing.T) {
 	a.SetHealthy(false)
 	lp := NewLeastPending([]*Backend{a, b})
 
-	got, err := lp.Select(1)
+	got, err := lp.Select(SelectionInput{EstimatedCost: 1})
 	if err != nil {
 		t.Fatalf("select: %v", err)
 	}
@@ -45,11 +45,11 @@ func TestLeastPendingPrefersLessBusyBackend(t *testing.T) {
 	b, _ := NewBackend("b", "http://b.test")
 	lp := NewLeastPending([]*Backend{a, b})
 
-	first, err := lp.Select(1)
+	first, err := lp.Select(SelectionInput{EstimatedCost: 1})
 	if err != nil {
 		t.Fatalf("select first: %v", err)
 	}
-	second, err := lp.Select(1)
+	second, err := lp.Select(SelectionInput{EstimatedCost: 1})
 	if err != nil {
 		t.Fatalf("select second: %v", err)
 	}
@@ -59,7 +59,7 @@ func TestLeastPendingPrefersLessBusyBackend(t *testing.T) {
 	}
 
 	second.Release()
-	third, err := lp.Select(1)
+	third, err := lp.Select(SelectionInput{EstimatedCost: 1})
 	if err != nil {
 		t.Fatalf("select third: %v", err)
 	}
@@ -76,7 +76,7 @@ func TestLeastPendingReturnsErrorWhenNoneHealthy(t *testing.T) {
 	a.SetHealthy(false)
 	lp := NewLeastPending([]*Backend{a})
 
-	if _, err := lp.Select(1); err != ErrNoHealthyBackend {
+	if _, err := lp.Select(SelectionInput{EstimatedCost: 1}); err != ErrNoHealthyBackend {
 		t.Fatalf("expected ErrNoHealthyBackend, got %v", err)
 	}
 }

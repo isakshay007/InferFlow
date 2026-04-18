@@ -1,3 +1,0 @@
-aws_region        = "us-east-1"
-state_bucket_name = "inferflow-terraform-state"
-lock_table_name   = "inferflow-terraform-locks"

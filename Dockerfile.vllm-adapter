@@ -1,0 +1,11 @@
+FROM golang:1.22 AS build
+WORKDIR /src
+COPY go.mod go.sum ./
+COPY cmd ./cmd
+COPY internal ./internal
+RUN go build -o /out/vllm-adapter ./cmd/vllm-adapter
+
+FROM gcr.io/distroless/base-debian12
+COPY --from=build /out/vllm-adapter /vllm-adapter
+EXPOSE 9000
+ENTRYPOINT ["/vllm-adapter"]

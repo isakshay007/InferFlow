@@ -38,7 +38,7 @@ func (s *LeastPending) SetBackends(backends []*Backend) {
 	s.loads = updated
 }
 
-func (s *LeastPending) Select(_ int) (Decision, error) {
+func (s *LeastPending) Select(_ SelectionInput) (Decision, error) {
 	s.mu.RLock()
 	backends := append([]*Backend(nil), s.backends...)
 	loads := s.loads

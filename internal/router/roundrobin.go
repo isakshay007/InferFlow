@@ -45,7 +45,7 @@ func (r *RoundRobin) Pick() (*Backend, error) {
 	return nil, ErrNoHealthyBackend
 }
 
-func (r *RoundRobin) Select(_ int) (Decision, error) {
+func (r *RoundRobin) Select(_ SelectionInput) (Decision, error) {
 	backend, err := r.Pick()
 	if err != nil {
 		return Decision{}, err

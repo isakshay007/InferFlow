@@ -2,52 +2,42 @@
 
 Terraform manages the AWS baseline for InferFlow:
 
-- VPC and subnets
 - EKS cluster
-- GPU node group
-- IAM roles and policy attachments
+- system node group for router, Redis, and observability components
+- worker node group for vLLM workers
+- AWS VPC and subnets
+- ECR repository
 
-## Shared Remote State
+## Current Recommended Defaults
 
-InferFlow uses:
+- cluster name: `inferflow-eks`
+- region: `us-east-1`
+- system node group: `t3.medium` with `2` nodes
+- worker node group: `c5.xlarge`
+- registry name: `inferflow`
 
-- S3 for Terraform state
-- DynamoDB for state locking
+## Layout
 
-Main backend file:
+Main environment files:
 
-- [backend.tf](C:/Users/ajinf/Documents/CS%206650/InferFlow/terraform/environments/dev/backend.tf)
+- [main.tf](C:/Users/ajinf/Documents/CS%206650/InferFlow/terraform/environments/aws/main.tf)
+- [variables.tf](C:/Users/ajinf/Documents/CS%206650/InferFlow/terraform/environments/aws/variables.tf)
+- [outputs.tf](C:/Users/ajinf/Documents/CS%206650/InferFlow/terraform/environments/aws/outputs.tf)
+- [terraform.tfvars.example](C:/Users/ajinf/Documents/CS%206650/InferFlow/terraform/environments/aws/terraform.tfvars.example)
 
-## One-Time Bootstrap
-
-Bootstrap the shared state resources once:
+## Usage
 
 ```bash
-cd terraform/bootstrap/state
+cd terraform/environments/aws
 terraform init -backend=false
-terraform apply
-```
-
-Files:
-
-- [bootstrap main.tf](C:/Users/ajinf/Documents/CS%206650/InferFlow/terraform/bootstrap/state/main.tf)
-- [bootstrap tfvars example](C:/Users/ajinf/Documents/CS%206650/InferFlow/terraform/bootstrap/state/terraform.tfvars.example)
-
-## Main Environment Usage
-
-```bash
-cd terraform/environments/dev
-terraform init \
-  -backend-config="bucket=<state-bucket-name>" \
-  -backend-config="key=<state-key>" \
-  -backend-config="region=<aws-region>" \
-  -backend-config="dynamodb_table=<lock-table-name>" \
-  -backend-config="encrypt=true"
 terraform validate
 terraform plan
 terraform apply
 ```
 
-Recommended state key:
+## Notes
 
-- `inferflow/dev/terraform.tfstate`
+- Authentication uses `AWS_ACCESS_KEY_ID` and `AWS_SECRET_ACCESS_KEY` set in the environment; no project ID variable is required.
+- The router and Redis manifests target nodes labeled `inferflow/node-pool=system`.
+- The vLLM worker manifest targets nodes labeled `inferflow/node-pool=worker`.
+- After apply, configure kubectl with: `aws eks update-kubeconfig --region us-east-1 --name inferflow-eks`

@@ -1,6 +1,6 @@
 # Triton Setup
 
-This directory contains the first Triton model repository for InferFlow's AWS GPU path.
+This directory contains the first Triton model repository for InferFlow's deferred Triton backend path.
 
 ## Layout
 
@@ -13,8 +13,8 @@ This directory contains the first Triton model repository for InferFlow's AWS GP
 - The recommended image is built from [Dockerfile.triton](/C:/Users/ajinf/Documents/CS%206650/InferFlow/Dockerfile.triton), which extends the official Triton image with `torch` and `transformers`.
 - The Python backend downloads the Hugging Face model at runtime using `MODEL_ID`, which defaults to `Qwen/Qwen3-0.6B`.
 
-## AWS Notes
+## Notes
 
-- The first supported real runtime target is an AWS GPU environment.
+- The current primary runtime path is EKS + vLLM, not Triton.
 - The Kubernetes manifests mount this repository into the Triton pod via a ConfigMap for the lightweight source files; model weights are not checked into git.
-- Ensure the NVIDIA device plugin is installed on the EKS cluster before scheduling the Triton pod.
+- If Triton is reintroduced later, install the appropriate NVIDIA GPU support on the target cluster before scheduling the pod.

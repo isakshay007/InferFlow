@@ -171,7 +171,14 @@ func TestStrategyEndpointSupportsSwitching(t *testing.T) {
 		t.Fatalf("expected strategy %q, got %q", router.StrategyLeastPending, resp["strategy"])
 	}
 
-	req = httptest.NewRequest(http.MethodPut, "/strategy", bytes.NewBufferString(`{"strategy":"cost_aware"}`))
+	req = httptest.NewRequest(http.MethodPut, "/strategy", bytes.NewBufferString(`{"strategy":"random"}`))
+	rec = httptest.NewRecorder()
+	srv.httpSrv.Handler.ServeHTTP(rec, req)
+	if rec.Code != http.StatusOK {
+		t.Fatalf("expected status 200, got %d", rec.Code)
+	}
+
+	req = httptest.NewRequest(http.MethodPut, "/strategy", bytes.NewBufferString(`{"strategy":"kv_aware"}`))
 	rec = httptest.NewRecorder()
 	srv.httpSrv.Handler.ServeHTTP(rec, req)
 	if rec.Code != http.StatusOK {
@@ -183,8 +190,16 @@ func TestStrategyEndpointRejectsInvalidStrategy(t *testing.T) {
 	srv := newTestServer(t, []string{"http://127.0.0.1:1"})
 	defer func() { _ = srv.Shutdown() }()
 
-	req := httptest.NewRequest(http.MethodPut, "/strategy", bytes.NewBufferString(`{"strategy":"invalid"}`))
+	req := httptest.NewRequest(http.MethodPut, "/strategy", bytes.NewBufferString(`{"strategy":"cost_aware"}`))
 	rec := httptest.NewRecorder()
+	srv.httpSrv.Handler.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusBadRequest {
+		t.Fatalf("expected status 400, got %d", rec.Code)
+	}
+
+	req = httptest.NewRequest(http.MethodPut, "/strategy", bytes.NewBufferString(`{"strategy":"session_affinity"}`))
+	rec = httptest.NewRecorder()
 	srv.httpSrv.Handler.ServeHTTP(rec, req)
 
 	if rec.Code != http.StatusBadRequest {
@@ -202,6 +217,53 @@ func TestStrategyEndpointRejectsUnsupportedMethods(t *testing.T) {
 
 	if rec.Code != http.StatusMethodNotAllowed {
 		t.Fatalf("expected status 405, got %d", rec.Code)
+	}
+}
+
+func TestMetricsEndpointIncludesStrategyAndBackendCounters(t *testing.T) {
+	backend := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.URL.Path {
+		case "/healthz":
+			writeJSON(w, http.StatusOK, map[string]string{"status": "ok"})
+		case "/infer":
+			writeJSON(w, http.StatusOK, map[string]string{
+				"model":       "mock-llm",
+				"output_text": "Mock response to: hello",
+			})
+		default:
+			http.NotFound(w, r)
+		}
+	}))
+	defer backend.Close()
+
+	srv := newTestServer(t, []string{backend.URL})
+	defer func() { _ = srv.Shutdown() }()
+
+	body := proxy.ChatCompletionRequest{
+		Model: "mock-llm",
+		Messages: []proxy.ChatMessage{{
+			Role:    "user",
+			Content: "hello",
+		}},
+	}
+	req := httptest.NewRequest(http.MethodPost, "/v1/chat/completions", mustJSON(body))
+	rec := httptest.NewRecorder()
+	srv.httpSrv.Handler.ServeHTTP(rec, req)
+	if rec.Code != http.StatusOK {
+		t.Fatalf("expected chat completion status 200, got %d", rec.Code)
+	}
+
+	req = httptest.NewRequest(http.MethodGet, "/metrics", nil)
+	rec = httptest.NewRecorder()
+	srv.httpSrv.Handler.ServeHTTP(rec, req)
+	if rec.Code != http.StatusOK {
+		t.Fatalf("expected metrics status 200, got %d", rec.Code)
+	}
+	if !bytes.Contains(rec.Body.Bytes(), []byte(`inferflow_strategy_selections_total{strategy="round_robin"} 1`)) {
+		t.Fatalf("expected strategy metric in body: %s", rec.Body.String())
+	}
+	if !bytes.Contains(rec.Body.Bytes(), []byte(`inferflow_backend_selections_total{backend="a"} 1`)) {
+		t.Fatalf("expected backend metric in body: %s", rec.Body.String())
 	}
 }
 

@@ -5,7 +5,6 @@ on:
     paths:
       - "terraform/**"
       - ".github/workflows/terraform-plan.yml"
-      - ".github/workflows/terraform-apply.yml"
   push:
     branches:
       - main
@@ -13,19 +12,13 @@ on:
     paths:
       - "terraform/**"
       - ".github/workflows/terraform-plan.yml"
-      - ".github/workflows/terraform-apply.yml"
 
 permissions:
-  id-token: write
   contents: read
   pull-requests: write
 
 env:
-  AWS_REGION: ${{ vars.AWS_REGION }}
-  TF_DIR: terraform/environments/dev
-  TF_STATE_BUCKET: ${{ vars.TF_STATE_BUCKET }}
-  TF_LOCK_TABLE: ${{ vars.TF_LOCK_TABLE }}
-  TF_STATE_KEY: ${{ vars.TF_STATE_KEY }}
+  TF_DIR: terraform/environments/aws
 
 jobs:
   terraform-plan:
@@ -35,26 +28,18 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Validate required repository variables
+      - name: Validate required repository secrets
         shell: bash
         run: |
           set -euo pipefail
-          missing=0
-          for name in AWS_REGION TF_STATE_BUCKET TF_LOCK_TABLE TF_STATE_KEY; do
-            if [ -z "${!name:-}" ]; then
-              echo "Missing repository variable: $name"
-              missing=1
-            fi
-          done
-          if [ "$missing" -ne 0 ]; then
+          if [ -z "${{ secrets.AWS_ACCESS_KEY_ID }}" ]; then
+            echo "Missing repository secret: AWS_ACCESS_KEY_ID"
             exit 1
           fi
-
-      - name: Configure AWS credentials
-        uses: aws-actions/configure-aws-credentials@v4
-        with:
-          role-to-assume: ${{ secrets.AWS_ROLE_TO_ASSUME }}
-          aws-region: ${{ env.AWS_REGION }}
+          if [ -z "${{ secrets.AWS_SECRET_ACCESS_KEY }}" ]; then
+            echo "Missing repository secret: AWS_SECRET_ACCESS_KEY"
+            exit 1
+          fi
 
       - name: Set up Terraform
         uses: hashicorp/setup-terraform@v3
@@ -67,22 +52,25 @@ jobs:
 
       - name: Terraform init
         working-directory: ${{ env.TF_DIR }}
-        run: |
-          terraform init \
-            -backend-config="bucket=${TF_STATE_BUCKET}" \
-            -backend-config="key=${TF_STATE_KEY}" \
-            -backend-config="region=${AWS_REGION}" \
-            -backend-config="dynamodb_table=${TF_LOCK_TABLE}" \
-            -backend-config="encrypt=true"
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+        run: terraform init -backend=false
 
       - name: Terraform validate
         working-directory: ${{ env.TF_DIR }}
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
         run: terraform validate
 
       - name: Terraform plan
         id: plan
         working-directory: ${{ env.TF_DIR }}
         shell: bash
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
         run: |
           set -euo pipefail
           terraform plan -no-color -out=tfplan | tee plan.txt
@@ -90,7 +78,7 @@ jobs:
       - name: Upload plan artifact
         uses: actions/upload-artifact@v4
         with:
-          name: terraform-plan
+          name: terraform-plan-aws
           path: |
             ${{ env.TF_DIR }}/tfplan
             ${{ env.TF_DIR }}/plan.txt
@@ -104,7 +92,7 @@ jobs:
             const path = '${{ env.TF_DIR }}/plan.txt';
             const plan = fs.readFileSync(path, 'utf8');
             const body = [
-              '## Terraform Plan',
+              '## Terraform Plan (EKS)',
               '```',
               plan.slice(0, 60000),
               '```'

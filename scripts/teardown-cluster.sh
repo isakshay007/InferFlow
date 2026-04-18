@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-echo "InferFlow cluster teardown"
-echo "This destroys the Terraform-managed AWS baseline for the dev environment."
+echo "InferFlow EKS teardown"
+echo "This destroys the Terraform-managed AWS baseline for the EKS environment."
 
-cd terraform/environments/dev
-terraform init
+cd terraform/environments/aws
+terraform init -backend=false
 terraform destroy

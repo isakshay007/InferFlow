@@ -1,7 +1,0 @@
-aws_region          = "us-east-1"
-cluster_name        = "inferflow-dev"
-kubernetes_version  = "1.29"
-node_instance_types = ["g4dn.xlarge"]
-desired_size        = 1
-min_size            = 1
-max_size            = 2

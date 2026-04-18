@@ -1,12 +1,15 @@
-# Starter Helm values placeholder for Prometheus/Grafana/Tempo wiring.
-# Week 1 intentionally stops at repository scaffolding and does not yet
-# provide a complete observability deployment.
+# Starter Helm values for the EKS + vLLM deployment path.
+# Adjust service names to match the chart release names in your cluster.
 
 grafana:
   enabled: true
 
 prometheus:
   enabled: true
-
-tempo:
-  enabled: true
+  prometheusSpec:
+    additionalScrapeConfigs:
+      - job_name: inferflow-router
+        metrics_path: /metrics
+        static_configs:
+          - targets:
+              - inferflow-router.default.svc.cluster.local:80

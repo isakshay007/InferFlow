@@ -21,3 +21,5 @@ results/*.csv
 results/*.png
 !results/.gitkeep
 vendor/
+.claude/
+docs/*.html

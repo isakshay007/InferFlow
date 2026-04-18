@@ -18,7 +18,7 @@ func NewHandler(client Generator) http.Handler {
 	mux := http.NewServeMux()
 	mux.HandleFunc("/healthz", func(w http.ResponseWriter, r *http.Request) {
 		if err := client.HealthCheck(r.Context()); err != nil {
-			http.Error(w, "triton unavailable", http.StatusServiceUnavailable)
+			http.Error(w, "backend unavailable", http.StatusServiceUnavailable)
 			return
 		}
 		writeJSON(w, http.StatusOK, map[string]string{"status": "ok"})
@@ -47,7 +47,7 @@ func NewHandler(client Generator) http.Handler {
 		prompt := flattenMessages(req.Messages)
 		output, err := client.Generate(r.Context(), prompt)
 		if err != nil {
-			http.Error(w, "triton inference failed", http.StatusBadGateway)
+			http.Error(w, "backend inference failed", http.StatusBadGateway)
 			return
 		}
 

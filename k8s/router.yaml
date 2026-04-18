@@ -14,9 +14,11 @@ spec:
       labels:
         app: inferflow-router
     spec:
+      nodeSelector:
+        inferflow/node-pool: system
       containers:
         - name: router
-          image: inferflow/router:dev
+          image: 310429010516.dkr.ecr.us-east-1.amazonaws.com/inferflow:router
           imagePullPolicy: IfNotPresent
           ports:
             - containerPort: 8080
@@ -24,7 +26,11 @@ spec:
             - name: INFERFLOW_LISTEN_ADDR
               value: ":8080"
             - name: INFERFLOW_BACKENDS
-              value: "http://triton-adapter.default.svc.cluster.local:9000"
+              value: "http://vllm-worker-0.vllm-worker.default.svc.cluster.local:9000,http://vllm-worker-1.vllm-worker.default.svc.cluster.local:9000,http://vllm-worker-2.vllm-worker.default.svc.cluster.local:9000"
+            - name: INFERFLOW_REDIS_ADDR
+              value: "redis.default.svc.cluster.local:6379"
+            - name: INFERFLOW_CACHE_TTL
+              value: "10m"
           readinessProbe:
             httpGet:
               path: /readyz
@@ -33,12 +39,20 @@ spec:
             httpGet:
               path: /healthz
               port: 8080
+          resources:
+            requests:
+              cpu: "250m"
+              memory: "256Mi"
+            limits:
+              cpu: "500m"
+              memory: "512Mi"
 ---
 apiVersion: v1
 kind: Service
 metadata:
   name: inferflow-router
 spec:
+  type: ClusterIP
   selector:
     app: inferflow-router
   ports:

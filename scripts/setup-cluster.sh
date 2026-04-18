@@ -1,17 +1,16 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-echo "InferFlow cluster bootstrap"
-echo "This Week 1 script provisions AWS baseline infrastructure with Terraform and leaves in-cluster deployment to Helm/kubectl."
-echo "Before running, export AWS credentials and review terraform/environments/dev/terraform.tfvars."
+echo "InferFlow EKS bootstrap"
+echo "This script provisions the AWS baseline with Terraform and leaves in-cluster deployment to kubectl."
+echo "Before running, configure AWS credentials via 'aws configure' and review terraform/environments/aws/terraform.tfvars.example."
 
-cd terraform/environments/dev
-terraform init
+cd terraform/environments/aws
+terraform init -backend=false
 terraform apply
 
 echo "Next steps after Terraform apply:"
-echo "1. Update kubeconfig for the created EKS cluster."
-echo "2. Install the NVIDIA device plugin on the cluster if it is not already present."
-echo "3. Build and publish the router, triton-adapter, and triton-qwen3 images."
-echo "4. Deploy k8s/triton.yaml, k8s/triton-adapter.yaml, then k8s/router.yaml."
-echo "5. Verify one end-to-end request through the router before moving on."
+echo "1. Fetch kubeconfig: aws eks update-kubeconfig --name inferflow-eks --region us-east-1"
+echo "2. Build and publish the router and vllm-adapter images to ECR."
+echo "3. Deploy k8s/redis.yaml, k8s/vllm-worker.yaml, k8s/router.yaml, then k8s/keda-vllm.yaml."
+echo "4. Verify one end-to-end request through the router before running experiments."

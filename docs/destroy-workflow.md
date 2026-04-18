@@ -1,28 +1,24 @@
-# Destroy Workflow
+# Destroy Infrastructure
 
-InferFlow includes a manual-only AWS cleanup workflow.
+To remove the active AWS infrastructure, destroy it manually from Terraform.
 
-Workflow file:
+## Terraform Destroy
 
-- [destroy-aws.yml](C:/Users/ajinf/Documents/CS%206650/InferFlow/.github/workflows/destroy-aws.yml)
+```bash
+cd terraform/environments/aws
+terraform init -backend=false
+terraform destroy
+```
 
-## What It Does
+## What This Removes
 
-- deletes Kubernetes app resources
-- destroys Terraform-managed AWS infrastructure
-- deletes ECR repositories
-- optionally destroys the shared Terraform state bucket and DynamoDB lock table
+- EKS cluster
+- system node group
+- worker node group
+- AWS VPC and subnets
+- ECR repository
 
-## Safety Controls
+## Notes
 
-- the workflow is manual only
-- you must type `DESTROY`
-- `destroy_state_backend` should stay `false` unless you want a full wipe
-
-## Full Wipe
-
-To destroy everything created by the automated setup:
-
-- run the destroy workflow manually
-- set `confirm_destroy` to `DESTROY`
-- set `destroy_state_backend` to `true`
+- The Terraform state is local for the EKS environment, so run `destroy` from the same workspace you used for `apply`.
+- Delete any leftover container images in ECR if you want a completely clean project.

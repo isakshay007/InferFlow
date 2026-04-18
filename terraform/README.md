@@ -1,63 +1,48 @@
 # Terraform
 
-Terraform owns the AWS baseline for InferFlow:
+Terraform owns the AWS baseline for InferFlow.
 
-- VPC and subnets
-- EKS control plane
-- Managed node group
-- IAM roles and policy attachments
+## Managed Resources
 
-It now uses a shared remote backend for team-safe state management:
+- AWS VPC and subnets
+- EKS cluster
+- system node group
+- worker node group
+- ECR repository
 
-- S3 bucket for Terraform state
-- DynamoDB table for state locking
+## Main Environment
 
-## One-Time Remote State Bootstrap
+Use the AWS environment:
 
-Bootstrap the backend resources once from `terraform/bootstrap/state` using local state:
+- [terraform/environments/aws/main.tf](C:/Users/ajinf/Documents/CS%206650/InferFlow/terraform/environments/aws/main.tf)
+
+## Current Defaults
+
+- cluster name: `inferflow-eks`
+- region: `us-east-1`
+- system node group: `t3.medium` with `2` nodes
+- worker node group: `c5.xlarge`
+- registry name: `inferflow`
+
+## Usage
 
 ```bash
-cd terraform/bootstrap/state
+cd terraform/environments/aws
 terraform init -backend=false
+terraform validate
+terraform plan
 terraform apply
 ```
 
-This creates:
-
-- the S3 bucket that stores the Terraform state file
-- the DynamoDB table that provides state locking
-
-See [terraform/bootstrap/state/terraform.tfvars.example](/C:/Users/ajinf/Documents/CS%206650/InferFlow/terraform/bootstrap/state/terraform.tfvars.example) for the required inputs.
-
-## Shared Backend Usage
-
-After the bucket and lock table exist, initialize the main environment with remote state:
+After apply, configure kubectl:
 
 ```bash
-cd terraform/environments/dev
-terraform init \
-  -backend-config="bucket=<state-bucket-name>" \
-  -backend-config="key=<state-key>" \
-  -backend-config="region=<aws-region>" \
-  -backend-config="dynamodb_table=<lock-table-name>" \
-  -backend-config="encrypt=true"
-terraform validate
-terraform plan
+aws eks update-kubeconfig --region us-east-1 --name inferflow-eks
 ```
 
-Recommended state key for the dev environment:
+## GitHub Actions
 
-- `inferflow/dev/terraform.tfstate`
+The Terraform plan workflow expects:
 
-## GitHub Actions Variables
-
-The Terraform plan/apply workflows expect these repository variables:
-
-- `AWS_REGION`
-- `TF_STATE_BUCKET`
-- `TF_LOCK_TABLE`
-- `TF_STATE_KEY`
-
-The workflows also expect this repository secret:
-
-- `AWS_ROLE_TO_ASSUME`
+- repository secret `AWS_ACCESS_KEY_ID`
+- repository secret `AWS_SECRET_ACCESS_KEY`
