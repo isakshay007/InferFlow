@@ -217,6 +217,13 @@ func (s *Server) handleChatCompletions(w http.ResponseWriter, r *http.Request) {
 	}
 	w.Header().Set("X-Inferflow-Backend", backend.Name)
 	w.Header().Set("X-Inferflow-Strategy", strategyName)
+	if strategyName == router.StrategyKVAware {
+		if decision.CacheHit {
+			w.Header().Set("X-Inferflow-Cache-Hit", "true")
+		} else {
+			w.Header().Set("X-Inferflow-Cache-Hit", "false")
+		}
+	}
 
 	s.metrics.IncInFlight()
 	defer s.metrics.DecInFlight()

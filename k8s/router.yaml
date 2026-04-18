@@ -19,7 +19,7 @@ spec:
       containers:
         - name: router
           image: 310429010516.dkr.ecr.us-east-1.amazonaws.com/inferflow:router
-          imagePullPolicy: IfNotPresent
+          imagePullPolicy: Always
           ports:
             - containerPort: 8080
           env:

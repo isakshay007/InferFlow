@@ -13,17 +13,33 @@ def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="InferFlow starter load generator")
     parser.add_argument("--url", default="http://localhost:8080/v1/chat/completions")
     parser.add_argument("--requests", type=int, default=10)
+    parser.add_argument("--concurrency", type=int, default=3,
+                        help="Max concurrent requests in flight (default 3)")
     parser.add_argument("--model", default="mock-llm")
     parser.add_argument("--output", default="results/sample.csv")
     parser.add_argument("--strategy", default="round_robin")
     parser.add_argument("--strategies", default="")
-    # repeat-factor N: every N-th request reuses a fixed prompt (drives kv_aware cache hits)
     parser.add_argument("--repeat-factor", type=int, default=0,
                         help="Reuse the same prompt every N requests (0 = all unique)")
     return parser.parse_args()
 
 
-REPEATED_PROMPT = "Tell me about distributed systems and load balancing"
+REPEATED_PROMPT = (
+    "You are an expert distributed systems engineer. I am building an LLM inference router "
+    "called InferFlow that sits in front of multiple llama.cpp backends. The router supports "
+    "four strategies: round_robin, random, least_pending, and kv_aware. The kv_aware strategy "
+    "uses Redis to store a mapping from a SHA256 hash of the prompt to the backend name that "
+    "last handled it. This ensures that repeated prompts are routed to the same backend, "
+    "allowing the backend's internal KV cache to be reused across requests. "
+    "The system is deployed on AWS EKS with three c5.xlarge worker nodes, each running a "
+    "llama.cpp server process serving the Qwen2.5-0.5B-Instruct model in GGUF format. "
+    "The router is a Go service that proxies requests to the backends via the OpenAI-compatible "
+    "/v1/chat/completions API. Redis runs as a single pod in the same Kubernetes namespace. "
+    "Given this architecture, explain in detail: how does the transformer attention mechanism's "
+    "KV cache work, why does routing the same prompt to the same backend improve inference speed, "
+    "what are the tradeoffs between the four routing strategies under different load conditions, "
+    "and how would you benchmark the cache reuse benefit in a controlled experiment?"
+)
 
 def build_payload(model: str, request_id: int, repeat_factor: int = 0) -> bytes:
     if repeat_factor > 0 and request_id % repeat_factor == 0:
@@ -78,19 +94,23 @@ async def issue_request(url: str, model: str, request_id: int, strategy: str, re
             headers={"Content-Type": "application/json"},
             method="POST",
         )
-        with urllib.request.urlopen(req, timeout=10) as resp:
+        with urllib.request.urlopen(req, timeout=60) as resp:
             body = json.loads(resp.read().decode("utf-8"))
+            cache_hit_header = resp.headers.get("X-Inferflow-Cache-Hit", "")
             return {
                 "status": resp.status,
                 "body": body,
                 "backend": resp.headers.get("X-Inferflow-Backend", ""),
                 "strategy": resp.headers.get("X-Inferflow-Strategy", strategy),
+                "cache_hit": cache_hit_header.lower() == "true" if cache_hit_header else None,
             }
 
     try:
         result = await asyncio.to_thread(_send)
         total_ms = int((time.time() - started) * 1000)
         text = result["body"]["choices"][0]["message"]["content"]
+        # For non-kv_aware strategies the header is absent; fall back to is_repeat
+        cache_hit = result["cache_hit"] if result["cache_hit"] is not None else is_repeat
         return {
             "timestamp": int(started),
             "prompt_length": len(prompt),
@@ -99,7 +119,7 @@ async def issue_request(url: str, model: str, request_id: int, strategy: str, re
             "ttft_ms": total_ms,
             "total_ms": total_ms,
             "tokens_generated": len(text.split()),
-            "cache_hit": is_repeat,
+            "cache_hit": cache_hit,
             "error": "",
         }
     except urllib.error.HTTPError as exc:
@@ -132,12 +152,19 @@ async def issue_request(url: str, model: str, request_id: int, strategy: str, re
 
 async def main() -> None:
     args = parse_args()
+    sem = asyncio.Semaphore(args.concurrency)
     rows = []
+
+    async def throttled(url, model, idx, strategy, repeat_factor):
+        async with sem:
+            return await issue_request(url, model, idx, strategy, repeat_factor)
+
     for strategy in normalize_strategy_list(args):
+        print(f"Running strategy: {strategy}")
         await switch_strategy(strategy_url(args.url), strategy)
         rows.extend(
             await asyncio.gather(
-                *(issue_request(args.url, args.model, idx, strategy, args.repeat_factor)
+                *(throttled(args.url, args.model, idx, strategy, args.repeat_factor)
                   for idx in range(args.requests))
             )
         )
