@@ -1,21 +1,76 @@
 # InferFlow
 
-InferFlow is a scalable LLM inference router centered on a Go control-plane and pluggable routing strategies. It runs on AWS EKS with three llama.cpp backends (Qwen2.5-0.5B-Instruct, CPU-only) and supports four routing strategies switchable at runtime.
+InferFlow is a scalable LLM inference router built around a Go control-plane that distributes OpenAI-compatible requests across multiple backends using pluggable routing strategies. It runs on AWS EKS with three llama.cpp backends (Qwen2.5-0.5B-Instruct, CPU-only) and supports four routing strategies switchable at runtime — with a Streamlit dashboard for live monitoring.
 
-## Documentation
+## Why We Built This
 
-Detailed documentation is organized under [docs/README.md](C:/Users/ajinf/Documents/CS%206650/InferFlow/docs/README.md).
+Serving LLMs at scale is expensive and latency-sensitive. A single model server becomes a bottleneck the moment you add concurrency, and naive round-robin routing wastes money by ignoring KV-cache state and backend load. We wanted to explore whether smarter routing — cache-affinity routing, cost-aware selection, least-pending dispatch — could meaningfully reduce p95 latency and error rates compared to the baseline.
 
-Quick links:
+InferFlow is our answer: a thin, observable Go router sitting in front of multiple inference workers, making routing decisions in microseconds based on live backend state and prompt-level cache affinity. We built it to run real benchmarks and measure the tradeoffs between routing strategies under load.
 
-- [Overview](C:/Users/ajinf/Documents/CS%206650/InferFlow/docs/overview.md)
-- [Local Development](C:/Users/ajinf/Documents/CS%206650/InferFlow/docs/local-development.md)
-- [EKS vLLM Deployment](C:/Users/ajinf/Documents/CS%206650/InferFlow/docs/eks-vllm.md)
-- [Triton Setup](C:/Users/ajinf/Documents/CS%206650/InferFlow/docs/triton-setup.md)
-- [Kubernetes Deployment](C:/Users/ajinf/Documents/CS%206650/InferFlow/docs/kubernetes-deployment.md)
-- [Terraform Infrastructure](C:/Users/ajinf/Documents/CS%206650/InferFlow/docs/terraform-infrastructure.md)
-- [GitHub Actions](C:/Users/ajinf/Documents/CS%206650/InferFlow/docs/github-actions.md)
-- [Destroy Workflow](C:/Users/ajinf/Documents/CS%206650/InferFlow/docs/destroy-workflow.md)
+---
+
+## Architecture
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│  Load Generator (Python)  /  Streamlit UI  /  curl          │
+└─────────────────────────────┬───────────────────────────────┘
+                              │  OpenAI-compatible HTTP
+                              ▼
+              ┌───────────────────────────────┐
+              │         Go Router             │
+              │  POST /v1/chat/completions    │
+              │  GET|PUT /strategy            │
+              │  GET /metrics  GET /readyz    │
+              └──────────────┬────────────────┘
+                             │
+              ┌──────────────┼──────────────┐
+              │              │              │
+       round_robin     least_pending    kv_aware ◄── Redis
+         random          cost_aware              (affinity cache)
+              │              │              │
+              └──────────────┼──────────────┘
+                             │
+          ┌──────────────────┼──────────────────┐
+          ▼                  ▼                  ▼
+    ┌──────────┐       ┌──────────┐       ┌──────────┐
+    │ vLLM     │       │ vLLM     │       │ vLLM     │
+    │ worker-0 │       │ worker-1 │       │ worker-2 │
+    │ :9000    │       │ :9000    │       │ :9000    │
+    └──────────┘       └──────────┘       └──────────┘
+    (llama.cpp + Qwen2.5-0.5B-Instruct, EKS c5.xlarge nodes)
+```
+
+**Stack:**
+- Router — Go 1.21, `net/http`, zero external dependencies
+- Backends — llama.cpp serving Qwen/Qwen2.5-0.5B-Instruct-GGUF behind a vLLM-adapter sidecar
+- Cache — Redis (EKS) or in-process TTL store (local)
+- Infra — AWS EKS (us-east-1), Terraform, GitHub Actions CI
+- Observability — Prometheus metrics, OpenTelemetry scaffolding
+- UI — Streamlit dashboard (`ui/app.py`)
+
+---
+
+## Routing Strategies
+
+| Strategy | Algorithm | When to Use |
+|----------|-----------|-------------|
+| `round_robin` | Atomic counter cycling across healthy backends | Baseline / simplest fair distribution |
+| `least_pending` | Routes to backend with fewest in-flight requests | General load balancing |
+| `random` | Uniform random selection over healthy backends | Stateless, avoids thundering-herd |
+| `kv_aware` | SHA256 key of model+prompt → Redis lookup → prefer warm-cache backend, fall back to least_pending | Repeated prompts, reduces recompute latency |
+| `cost_aware` | Tracks estimated token cost per backend, routes to lowest-cost | Optimise total cost, not just queue depth |
+
+Switch strategies at runtime without restarting:
+
+```bash
+curl -X PUT http://localhost:8080/strategy \
+  -H "Content-Type: application/json" \
+  -d '{"strategy": "kv_aware"}'
+```
+
+---
 
 ## Load Test Results
 
@@ -75,68 +130,57 @@ Generated by `python analysis/charts.py --input results/loadtest.csv --output re
 **Latency over Time**
 ![Latency over Time](results/latency_over_time.png)
 
-## Current MVP Status
+---
 
-Implemented now:
+## Repository Layout
 
-- Go router with `POST /v1/chat/completions`
-- runtime routing strategies: `round_robin`, `least_pending`, `random`, `kv_aware`
-- strategy switching through `GET/PUT /strategy`
-- metrics endpoint at `GET /metrics`
-- mock-backed local development flow
-- llama.cpp adapter plus EKS deployment assets
-- Redis-backed prompt affinity for kv_aware strategy
-- retained Triton code as a deferred backend path
+```
+InferFlow/
+├── cmd/
+│   ├── router/          # Main inference routing server
+│   ├── mock-backend/    # Lightweight fake backend (~20ms) for local dev
+│   ├── vllm-adapter/    # Sidecar translating router requests → vLLM API
+│   └── triton-adapter/  # Retained (deferred backend path)
+├── internal/
+│   ├── server/          # HTTP server, config, request handling
+│   ├── router/          # Strategy implementations + backend health tracking
+│   ├── proxy/           # Backend HTTP client, request/response marshaling
+│   ├── cache/           # KV-cache affinity store (Redis + in-memory)
+│   ├── metrics/         # Prometheus metric counters and gauges
+│   ├── vllm/            # vLLM HTTP client
+│   └── otel/            # OpenTelemetry span scaffolding
+├── k8s/                 # Kubernetes manifests (router, vLLM workers, Redis, ALB)
+├── terraform/           # AWS EKS cluster, VPC, node groups, ECR
+├── loadgen/             # Async Python load generator + Locust file
+├── results/             # Experiment CSVs and benchmark summaries
+├── analysis/            # Analysis scripts and plots
+├── ui/                  # Streamlit monitoring dashboard
+├── docs/                # Full documentation (11 pages)
+├── scripts/             # Local-run and cluster setup helpers
+└── .github/workflows/   # CI (go test) + Terraform plan
+```
 
-Planned next:
-
-- Streaming SSE responses
-- Kubernetes endpoint discovery
-- richer Prometheus/Grafana dashboards
-- KEDA autoscaling rollout
-- AWS Terraform automation
+---
 
 ## Local Quick Start
 
 ### Option 1: Native processes
 
-Start the mock backend:
-
 ```bash
+# Terminal 1 — mock backend
 go run ./cmd/mock-backend
-```
 
-In another terminal, start the router:
-
-```bash
-$env:INFERFLOW_BACKENDS="http://localhost:9000"
+# Terminal 2 — router
+export INFERFLOW_BACKENDS="http://localhost:9000"
 go run ./cmd/router
 ```
 
-Send a sample request:
+Send a request:
 
 ```bash
 curl -X POST http://localhost:8080/v1/chat/completions \
   -H "Content-Type: application/json" \
-  -d "{\"model\":\"mock-llm\",\"messages\":[{\"role\":\"user\",\"content\":\"Hello from InferFlow\"}]}"
-```
-
-Run tests:
-
-```bash
-go test ./...
-```
-
-Generate a sample CSV:
-
-```bash
-python loadgen/generator.py --requests 5 --output results/sample.csv
-```
-
-Run all active strategies locally:
-
-```bash
-python loadgen/generator.py --requests 5 --strategies round_robin,least_pending,random,kv_aware --output results/strategies.csv
+  -d '{"model":"mock-llm","messages":[{"role":"user","content":"Hello from InferFlow"}]}'
 ```
 
 ### Option 2: Docker Compose
@@ -145,71 +189,142 @@ python loadgen/generator.py --requests 5 --strategies round_robin,least_pending,
 docker compose up --build
 ```
 
-The router listens on `http://localhost:8080` and the mock backend is internal to Compose.
+Router listens on `http://localhost:8080`; the mock backend is internal to Compose.
 
-## EKS Terraform Quick Start
+### Run tests
+
+```bash
+go test ./...
+```
+
+### Benchmark all strategies locally
+
+```bash
+python loadgen/generator.py \
+  --requests 20 \
+  --strategies round_robin,least_pending,random,kv_aware \
+  --output results/strategies.csv
+```
+
+---
+
+## EKS Deployment
+
+### 1. Provision infrastructure
 
 ```bash
 cd terraform/environments/aws
-terraform init -backend=false
-terraform plan
+terraform init
 terraform apply
 ```
 
-## Router API
+This creates an EKS 1.32 cluster (`inferflow-eks`, us-east-1), a VPC (10.10.0.0/16), system node group (`t3.medium` × 2), worker node group (`c5.xlarge` × 3), and an ECR repo.
 
-### `POST /v1/chat/completions`
+### 2. Build and push images
 
-Accepts a minimal OpenAI-compatible request body:
+```bash
+aws ecr get-login-password | docker login --username AWS --password-stdin <ECR_URI>
+docker build -f Dockerfile.router    -t <ECR_URI>/inferflow:router    .
+docker build -f Dockerfile.adapter   -t <ECR_URI>/inferflow:adapter   .
+docker push <ECR_URI>/inferflow:router
+docker push <ECR_URI>/inferflow:adapter
+```
+
+### 3. Deploy to cluster
+
+```bash
+kubectl apply -f k8s/redis.yaml
+kubectl apply -f k8s/vllm-worker.yaml
+kubectl apply -f k8s/router.yaml
+```
+
+Set `INFERFLOW_BACKENDS` in `k8s/router.yaml` to the worker pod DNS names, e.g.:
+
+```
+vllm-worker-0.vllm-worker.default.svc.cluster.local:9000,
+vllm-worker-1.vllm-worker.default.svc.cluster.local:9000
+```
+
+See [docs/eks-vllm.md](docs/eks-vllm.md) for the full walkthrough.
+
+---
+
+## Router API Reference
+
+| Method | Path | Description |
+|--------|------|-------------|
+| `POST` | `/v1/chat/completions` | OpenAI-compatible inference |
+| `GET` | `/healthz` | Liveness probe |
+| `GET` | `/readyz` | Readiness (200 only if ≥1 healthy backend) |
+| `GET` | `/metrics` | Prometheus-format metrics |
+| `GET` | `/strategy` | Current active strategy |
+| `PUT` | `/strategy` | Switch strategy at runtime |
+| `GET` | `/api/status` | Full JSON status (backends, latency, cache hit rate) |
+
+**Request body** (`POST /v1/chat/completions`):
 
 ```json
 {
   "model": "mock-llm",
-  "messages": [
-    { "role": "user", "content": "Hello" }
-  ],
+  "messages": [{ "role": "user", "content": "Hello" }],
   "stream": false
 }
 ```
 
-Returns a minimal OpenAI-compatible response shape containing:
+**Prometheus metrics exposed:**
 
-- `id`
-- `object`
-- `created`
-- `model`
-- `choices`
-- `usage`
+| Metric | Description |
+|--------|-------------|
+| `inferflow_inflight_requests` | Current in-flight requests |
+| `inferflow_requests_total` | Cumulative request count |
+| `inferflow_backend_errors_total` | Failed backend requests |
+| `inferflow_strategy_selections_total{strategy}` | Selections per strategy |
+| `inferflow_backend_selections_total{backend}` | Selections per backend |
 
-### `GET /healthz`
+---
 
-Returns process liveness.
+## Key Environment Variables
 
-### `GET /readyz`
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `INFERFLOW_BACKENDS` | — | Comma-separated backend URLs (required) |
+| `INFERFLOW_LISTEN_ADDR` | `:8080` | Router listen address |
+| `INFERFLOW_REDIS_ADDR` | — | Redis address (omit to use in-memory cache) |
+| `INFERFLOW_CACHE_TTL` | `10m` | KV-cache affinity TTL |
 
-Returns success only when at least one backend is currently healthy.
+---
 
-### `GET /metrics`
+## Streamlit Dashboard
 
-Returns Prometheus-style router metrics.
+```bash
+cd ui
+pip install streamlit requests
+streamlit run app.py
+```
 
-### `GET /strategy` and `PUT /strategy`
+Provides live backend health, strategy switching, a chat interface to test routing, and a routing log showing which backend served each request.
 
-Supported runtime strategies:
+---
 
-- `round_robin`
-- `least_pending`
-- `random`
-- `kv_aware`
+## Documentation
 
-## Infrastructure Note
+| Doc | Contents |
+|-----|----------|
+| [docs/overview.md](docs/overview.md) | Design goals and system overview |
+| [docs/local-development.md](docs/local-development.md) | Full local dev setup |
+| [docs/eks-vllm.md](docs/eks-vllm.md) | EKS + llama.cpp deployment walkthrough |
+| [docs/terraform-infrastructure.md](docs/terraform-infrastructure.md) | Terraform resource details |
+| [docs/kubernetes-deployment.md](docs/kubernetes-deployment.md) | K8s manifest reference |
+| [docs/github-actions.md](docs/github-actions.md) | CI/CD pipeline docs |
+| [docs/triton-setup.md](docs/triton-setup.md) | Triton deferred path |
+| [docs/destroy-workflow.md](docs/destroy-workflow.md) | Teardown instructions |
 
-The active infrastructure path is AWS EKS with llama.cpp backends (3x c5.xlarge nodes). The router is publicly accessible via an AWS ALB. Triton and vLLM adapter code is retained in the repo as deferred backend paths.
+---
 
-## Scripts
+## What's Next
 
-- `scripts/local-run.ps1`: starts mock backend and router locally
-- `scripts/setup-cluster.sh`: infrastructure and deployment helper notes
-- `scripts/teardown-cluster.sh`: destroy helper
-
-Detailed infrastructure, deploy, and destroy docs live under [docs/README.md](C:/Users/ajinf/Documents/CS%206650/InferFlow/docs/README.md).
+- Streaming SSE responses (chunked transfer)
+- Dynamic backend discovery (Kubernetes endpoint watch)
+- KEDA autoscaling on `inferflow_inflight_requests`
+- Grafana dashboards wired to Prometheus
+- Triton reintroduction as a second backend path
