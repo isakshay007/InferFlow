@@ -1,6 +1,7 @@
 # InferFlow
 
 **Live Demo: [inferflow-final.streamlit.app](https://inferflow-final.streamlit.app)**
+**Live API: [k8s-default-inferflo-b7faaa4fda-434516550.us-east-1.elb.amazonaws.com](http://k8s-default-inferflo-b7faaa4fda-434516550.us-east-1.elb.amazonaws.com)**
 
 InferFlow is a scalable LLM inference router centered on a Go control-plane and pluggable routing strategies. It runs on AWS EKS with three llama.cpp backends (Qwen2.5-0.5B-Instruct, CPU-only) and supports four routing strategies switchable at runtime — with a Streamlit dashboard for live monitoring.
 
