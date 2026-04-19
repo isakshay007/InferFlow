@@ -5,7 +5,7 @@ from datetime import datetime
 
 INFERFLOW_URL = os.getenv(
     "INFERFLOW_URL",
-    "http://k8s-default-inferflo-b7faaa4fda-434516550.us-east-1.elb.amazonaws.com",
+    "http://localhost:8080",
 )
 MODEL = os.getenv("INFERFLOW_MODEL", "Qwen/Qwen2.5-0.5B-Instruct")
 POLL_INTERVAL = 2  # seconds

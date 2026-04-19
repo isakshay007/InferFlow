@@ -4,8 +4,8 @@ InferFlow uses GitHub Actions for CI and AWS Terraform planning.
 
 ## Workflows
 
-- [ci.yml](C:/Users/ajinf/Documents/CS%206650/InferFlow/.github/workflows/ci.yml)
-- [terraform-plan.yml](C:/Users/ajinf/Documents/CS%206650/InferFlow/.github/workflows/terraform-plan.yml)
+- [ci.yml](../.github/workflows/ci.yml)
+- [terraform-plan.yml](../.github/workflows/terraform-plan.yml)
 
 ## Required Repository Secrets
 
@@ -21,5 +21,5 @@ InferFlow uses GitHub Actions for CI and AWS Terraform planning.
 
 ## Notes
 
-- The Terraform plan workflow targets [terraform/environments/aws](C:/Users/ajinf/Documents/CS%206650/InferFlow/terraform/environments/aws).
+- The Terraform plan workflow targets [terraform/environments/aws](../terraform/environments/aws).
 - Container image push and cluster deployment are currently manual for the EKS path.

@@ -1,0 +1,5 @@
+{"strategy": "round_robin", "concurrency": 1, "request_id": 1, "status_code": 200, "latency_ms": 1945.773, "timestamp": "2026-03-30T03:28:27.930937Z", "error": null}
+{"strategy": "round_robin", "concurrency": 1, "request_id": 2, "status_code": 502, "latency_ms": 10028.408, "timestamp": "2026-03-30T03:28:29.876996Z", "error": "http_502"}
+{"strategy": "round_robin", "concurrency": 1, "request_id": 3, "status_code": 200, "latency_ms": 5891.173, "timestamp": "2026-03-30T03:28:39.907452Z", "error": null}
+{"strategy": "round_robin", "concurrency": 1, "request_id": 4, "status_code": 200, "latency_ms": 7043.972, "timestamp": "2026-03-30T03:28:45.798801Z", "error": null}
+{"strategy": "round_robin", "concurrency": 1, "request_id": 5, "status_code": 200, "latency_ms": 5963.801, "timestamp": "2026-03-30T03:28:52.843129Z", "error": null}
