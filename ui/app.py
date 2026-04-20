@@ -327,7 +327,7 @@ STRATEGY_DESCRIPTIONS = {
 with st.sidebar:
     st.markdown("""
     <div style="padding: 8px 0 16px 0;">
-        <div style="font-size:1.3rem; font-weight:700; color:#e2e8f0;">⚡ InferFlow</div>
+        <div style="font-size:1.3rem; font-weight:700; color:#e2e8f0;">InferFlow</div>
         <div style="font-size:0.75rem; color:#4a5568; margin-top:2px;">LLM Inference Router</div>
     </div>
     """, unsafe_allow_html=True)
@@ -433,10 +433,8 @@ with tab1:
     with msgs_box:
         if not st.session_state.messages:
             st.markdown("""
-            <div style="text-align:center;padding:80px 20px;color:#4a5568;">
-                <div style="font-size:2.5rem;margin-bottom:12px;">⚡</div>
-                <div style="font-size:0.95rem;color:#718096;">Send a message to test the router.</div>
-                <div style="font-size:0.8rem;margin-top:6px;">Switch strategies in the sidebar and watch which backend responds.</div>
+            <div style="text-align:center;padding:100px 20px;color:#4a5568;">
+                <div style="font-size:0.88rem;color:#4a5568;">Send a message below to test the router.</div>
             </div>
             """, unsafe_allow_html=True)
         for msg in st.session_state.messages:
