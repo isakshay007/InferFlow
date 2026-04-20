@@ -413,7 +413,6 @@ with st.sidebar:
 # ── hero banner ───────────────────────────────────────────────────────────────
 st.markdown("""
 <div class="hero">
-    <h1>⚡ InferFlow</h1>
     <p>Scalable LLM inference router — Go control-plane · AWS EKS · 3× llama.cpp backends · Redis KV-cache affinity</p>
     <span class="badge">Qwen2.5-0.5B-Instruct</span>
     <span class="badge">4 routing strategies</span>
@@ -430,7 +429,7 @@ tab1, tab2, tab3 = st.tabs(["💬   Chat", "📊   Benchmark Results", "🔀   R
 # ══ TAB 1: CHAT ═══════════════════════════════════════════════════════════════
 with tab1:
     # scrollable messages area — fixed height pushes chat_input to the bottom
-    msgs_box = st.container(height=500, border=False)
+    msgs_box = st.container(height=380, border=False)
     with msgs_box:
         if not st.session_state.messages:
             st.markdown("""
