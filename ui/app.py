@@ -292,12 +292,20 @@ def set_strategy(name: str) -> bool:
 
 SYSTEM_PROMPT = {
     "role": "system",
-    "content": "You are a helpful assistant. Answer concisely and accurately.",
+    "content": (
+        "You are a helpful assistant. "
+        "Answer the user's question directly. "
+        "Do NOT repeat the question, add any prefix, number, or label before your answer. "
+        "Start your reply immediately with the answer text."
+    ),
 }
+
+import re as _re
+_JUNK_PREFIX = _re.compile(r'^[\d\s\?\!\.\:]+')
 
 
 def chat(messages: list) -> tuple[str, str, str, bool]:
-    trimmed = messages[-6:]
+    trimmed = messages[-4:]
     payload = {
         "model": MODEL,
         "messages": [SYSTEM_PROMPT] + trimmed,
@@ -308,7 +316,9 @@ def chat(messages: list) -> tuple[str, str, str, bool]:
     r = httpx.post(f"{INFERFLOW_URL}/v1/chat/completions", json=payload, timeout=60)
     r.raise_for_status()
     data = r.json()
-    reply = data["choices"][0]["message"]["content"]
+    reply = data["choices"][0]["message"]["content"].strip()
+    # strip leading artifact characters the small model sometimes emits
+    reply = _JUNK_PREFIX.sub("", reply).strip() or reply
     backend = r.headers.get("x-inferflow-backend", "unknown")
     strategy = r.headers.get("x-inferflow-strategy", "unknown")
     cache_hit = r.headers.get("x-inferflow-cache-hit", "false").lower() == "true"
