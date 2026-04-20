@@ -458,31 +458,18 @@ with tab1:
             st.session_state.messages = []
             st.rerun()
 
-    # chat_input renders below the fixed-height container — naturally at the bottom
     if prompt := st.chat_input("Ask anything — watch the router decide which backend responds…"):
         st.session_state.messages.append({"role": "user", "content": prompt})
-        with st.chat_message("user"):
-            st.markdown(prompt)
 
-        with st.chat_message("assistant"):
-            with st.spinner("Routing request…"):
-                try:
-                    reply, backend, strategy, cache_hit = chat(st.session_state.messages)
-                except Exception as e:
-                    reply = f"Error: {e}"
-                    backend, strategy, cache_hit = "—", "—", False
-
-            st.markdown(reply)
-            cache_badge = ""
-            if strategy == "kv_aware":
-                cache_badge = ' · <span style="color:#f6e05e;">⚡ KV cache hit</span>' if cache_hit else ' · <span style="color:#718096;">cache miss</span>'
-            st.markdown(
-                f'<div style="font-size:0.75rem;color:#4a5568;margin-top:4px;font-family:\'JetBrains Mono\',monospace;">'
-                f'→ <span style="color:#63b3ed;">{backend}</span> '
-                f'via <span style="color:#68d391;">{strategy}</span>'
-                f'{cache_badge}</div>',
-                unsafe_allow_html=True,
-            )
+        # show spinner inside the messages box while waiting for the backend
+        with msgs_box:
+            with st.chat_message("assistant"):
+                with st.spinner("Routing request…"):
+                    try:
+                        reply, backend, strategy, cache_hit = chat(st.session_state.messages)
+                    except Exception as e:
+                        reply = f"Error: {e}"
+                        backend, strategy, cache_hit = "—", "—", False
 
         st.session_state.messages.append({
             "role": "assistant",
@@ -506,6 +493,9 @@ with tab1:
             "time": datetime.now().strftime("%H:%M:%S"),
         })
         st.session_state.routing_log = st.session_state.routing_log[:15]
+
+        # rerun so all messages re-render cleanly inside msgs_box
+        st.rerun()
 
 
 # ══ TAB 2: BENCHMARK RESULTS ══════════════════════════════════════════════════
