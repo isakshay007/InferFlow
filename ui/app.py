@@ -186,7 +186,7 @@ html, body, [class*="css"] { font-family: 'Inter', sans-serif; }
     background: #1a1f2e;
     border-radius: 10px;
     padding: 4px;
-    gap: 4px;
+    gap: 16px;
 }
 .stTabs [data-baseweb="tab"] {
     background: transparent;
@@ -194,6 +194,8 @@ html, body, [class*="css"] { font-family: 'Inter', sans-serif; }
     color: #718096;
     font-weight: 500;
     font-size: 0.88rem;
+    padding-left: 20px !important;
+    padding-right: 20px !important;
 }
 .stTabs [aria-selected="true"] {
     background: #2d3748 !important;
@@ -411,7 +413,7 @@ st.markdown("""
 
 
 # ── tabs ──────────────────────────────────────────────────────────────────────
-tab1, tab2, tab3 = st.tabs(["💬  Chat", "📊  Benchmark Results", "🔀  Routing Log"])
+tab1, tab2, tab3 = st.tabs(["💬   Chat", "📊   Benchmark Results", "🔀   Routing Log"])
 
 
 # ══ TAB 1: CHAT ═══════════════════════════════════════════════════════════════
