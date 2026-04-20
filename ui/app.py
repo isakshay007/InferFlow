@@ -429,34 +429,39 @@ tab1, tab2, tab3 = st.tabs(["💬   Chat", "📊   Benchmark Results", "🔀   R
 
 # ══ TAB 1: CHAT ═══════════════════════════════════════════════════════════════
 with tab1:
-    # render message history — full width, no column split
-    # st.chat_input() at tab scope so Streamlit pins it to the page bottom
-    st.markdown('<div class="chat-messages-container">', unsafe_allow_html=True)
-
-    for msg in st.session_state.messages:
-        with st.chat_message(msg["role"]):
-            st.markdown(msg["content"])
-            if msg["role"] == "assistant" and "backend" in msg:
-                cache_badge = ""
-                if msg.get("strategy") == "kv_aware":
-                    hit = msg.get("cache_hit", False)
-                    cache_badge = ' · <span style="color:#f6e05e;">⚡ KV cache hit</span>' if hit else ' · <span style="color:#718096;">cache miss</span>'
-                st.markdown(
-                    f'<div style="font-size:0.75rem;color:#4a5568;margin-top:4px;font-family:\'JetBrains Mono\',monospace;">'
-                    f'→ <span style="color:#63b3ed;">{msg["backend"]}</span> '
-                    f'via <span style="color:#68d391;">{msg["strategy"]}</span>'
-                    f'{cache_badge}</div>',
-                    unsafe_allow_html=True,
-                )
-
-    st.markdown('</div>', unsafe_allow_html=True)
+    # scrollable messages area — fixed height pushes chat_input to the bottom
+    msgs_box = st.container(height=500, border=False)
+    with msgs_box:
+        if not st.session_state.messages:
+            st.markdown("""
+            <div style="text-align:center;padding:80px 20px;color:#4a5568;">
+                <div style="font-size:2.5rem;margin-bottom:12px;">⚡</div>
+                <div style="font-size:0.95rem;color:#718096;">Send a message to test the router.</div>
+                <div style="font-size:0.8rem;margin-top:6px;">Switch strategies in the sidebar and watch which backend responds.</div>
+            </div>
+            """, unsafe_allow_html=True)
+        for msg in st.session_state.messages:
+            with st.chat_message(msg["role"]):
+                st.markdown(msg["content"])
+                if msg["role"] == "assistant" and "backend" in msg:
+                    cache_badge = ""
+                    if msg.get("strategy") == "kv_aware":
+                        hit = msg.get("cache_hit", False)
+                        cache_badge = ' · <span style="color:#f6e05e;">⚡ KV cache hit</span>' if hit else ' · <span style="color:#718096;">cache miss</span>'
+                    st.markdown(
+                        f'<div style="font-size:0.75rem;color:#4a5568;margin-top:4px;font-family:\'JetBrains Mono\',monospace;">'
+                        f'→ <span style="color:#63b3ed;">{msg["backend"]}</span> '
+                        f'via <span style="color:#68d391;">{msg["strategy"]}</span>'
+                        f'{cache_badge}</div>',
+                        unsafe_allow_html=True,
+                    )
 
     if st.session_state.messages:
         if st.button("Clear chat", key="clear_chat"):
             st.session_state.messages = []
             st.rerun()
 
-    # chat input at tab scope → Streamlit renders it fixed at page bottom
+    # chat_input renders below the fixed-height container — naturally at the bottom
     if prompt := st.chat_input("Ask anything — watch the router decide which backend responds…"):
         st.session_state.messages.append({"role": "user", "content": prompt})
         with st.chat_message("user"):
