@@ -439,7 +439,7 @@ with tab1:
             """, unsafe_allow_html=True)
         for msg in st.session_state.messages:
             label = "You" if msg["role"] == "user" else "Agent"
-            avatar = "user" if msg["role"] == "user" else "assistant"
+            avatar = "🧑" if msg["role"] == "user" else "🤖"
             with st.chat_message(label, avatar=avatar):
                 st.markdown(msg["content"])
                 if msg["role"] == "assistant" and "backend" in msg:
@@ -467,7 +467,7 @@ with tab1:
 
         # show spinner inside the messages box while waiting for the backend
         with msgs_box:
-            with st.chat_message("Agent", avatar="assistant"):
+            with st.chat_message("Agent", avatar="🤖"):
                 with st.spinner("Routing request…"):
                     try:
                         reply, backend, strategy, cache_hit = chat(st.session_state.messages)
