@@ -46,21 +46,24 @@ html, body, [class*="css"] { font-family: 'Inter', sans-serif; }
     margin-bottom: 16px;
 }
 
-/* fix chat input to bottom of viewport */
-.stChatInputContainer, [data-testid="stChatInputContainer"] {
+/* fix chat input pinned to very bottom */
+[data-testid="stChatInputContainer"],
+.stChatInputContainer,
+div[class*="chatInputContainer"],
+section[data-testid="stBottom"],
+div[data-testid="stBottom"] {
     position: fixed !important;
-    bottom: 0 !important;
-    left: var(--sidebar-width, 21rem) !important;
-    right: 0 !important;
+    bottom: 2rem !important;
+    left: 22rem !important;
+    right: 2rem !important;
     background: #0f1117 !important;
-    padding: 20px 3rem 60px 3rem !important;
     border-top: 1px solid #2d3748 !important;
-    z-index: 999 !important;
+    padding-top: 12px !important;
+    z-index: 9999 !important;
 }
 
-/* add bottom padding to chat messages so they don't hide behind fixed input */
 .chat-messages-container {
-    padding-bottom: 90px;
+    padding-bottom: 120px;
 }
 .hero h1 {
     font-size: 1.8rem;
@@ -516,6 +519,30 @@ with tab1:
             if st.button("Clear chat", key="clear_chat"):
                 st.session_state.messages = []
                 st.rerun()
+
+        # force chat input to bottom via JS
+        st.markdown("""
+        <script>
+        const moveInput = () => {
+            const el = document.querySelector('[data-testid="stChatInputContainer"]')
+                     || document.querySelector('section[data-testid="stBottom"]')
+                     || document.querySelector('.stChatInputContainer');
+            if (el) {
+                el.style.position = 'fixed';
+                el.style.bottom = '2rem';
+                el.style.left = '22rem';
+                el.style.right = '2rem';
+                el.style.zIndex = '9999';
+                el.style.background = '#0f1117';
+                el.style.borderTop = '1px solid #2d3748';
+                el.style.paddingTop = '12px';
+            } else {
+                setTimeout(moveInput, 200);
+            }
+        };
+        moveInput();
+        </script>
+        """, unsafe_allow_html=True)
 
     with col_info:
         st.markdown('<div class="section-header">How It Works</div>', unsafe_allow_html=True)
