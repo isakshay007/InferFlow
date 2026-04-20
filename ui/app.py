@@ -28,26 +28,49 @@ html, body, [class*="css"] { font-family: 'Inter', sans-serif; }
 /* hide default streamlit header */
 #MainMenu, footer, header { visibility: hidden; }
 
+/* tighten top padding so hero sits closer to top */
+.block-container {
+    padding-top: 1.2rem !important;
+    padding-bottom: 0rem !important;
+}
+
 /* main bg */
 .stApp { background: #0f1117; }
 
-/* hero banner */
+/* hero banner — tighter, sits near top */
 .hero {
     background: linear-gradient(135deg, #1a1f2e 0%, #0f1117 50%, #1a1f2e 100%);
     border: 1px solid #2d3748;
     border-radius: 16px;
-    padding: 28px 36px;
-    margin-bottom: 24px;
+    padding: 20px 28px;
+    margin-bottom: 16px;
+}
+
+/* fix chat input to bottom of viewport */
+.stChatInputContainer, [data-testid="stChatInputContainer"] {
+    position: fixed !important;
+    bottom: 0 !important;
+    left: var(--sidebar-width, 21rem) !important;
+    right: 0 !important;
+    background: #0f1117 !important;
+    padding: 12px 3rem 16px 3rem !important;
+    border-top: 1px solid #2d3748 !important;
+    z-index: 999 !important;
+}
+
+/* add bottom padding to chat messages so they don't hide behind fixed input */
+.chat-messages-container {
+    padding-bottom: 90px;
 }
 .hero h1 {
-    font-size: 2.2rem;
+    font-size: 1.8rem;
     font-weight: 700;
     color: #e2e8f0;
-    margin: 0 0 6px 0;
+    margin: 0 0 4px 0;
 }
 .hero p {
     color: #718096;
-    font-size: 0.95rem;
+    font-size: 0.88rem;
     margin: 0;
 }
 .hero .badge {
@@ -421,6 +444,7 @@ with tab1:
     col_chat, col_info = st.columns([3, 1])
 
     with col_chat:
+        st.markdown('<div class="chat-messages-container">', unsafe_allow_html=True)
         # render message history
         for msg in st.session_state.messages:
             with st.chat_message(msg["role"]):
@@ -485,6 +509,8 @@ with tab1:
                 "time": datetime.now().strftime("%H:%M:%S"),
             })
             st.session_state.routing_log = st.session_state.routing_log[:15]
+
+        st.markdown('</div>', unsafe_allow_html=True)
 
         if st.session_state.messages:
             if st.button("Clear chat", key="clear_chat"):
