@@ -46,24 +46,9 @@ html, body, [class*="css"] { font-family: 'Inter', sans-serif; }
     margin-bottom: 16px;
 }
 
-/* fix chat input pinned to very bottom */
-[data-testid="stChatInputContainer"],
-.stChatInputContainer,
-div[class*="chatInputContainer"],
-section[data-testid="stBottom"],
-div[data-testid="stBottom"] {
-    position: fixed !important;
-    bottom: 2rem !important;
-    left: 22rem !important;
-    right: 2rem !important;
-    background: #0f1117 !important;
-    border-top: 1px solid #2d3748 !important;
-    padding-top: 12px !important;
-    z-index: 9999 !important;
-}
-
+/* give messages area bottom breathing room so last message isn't hidden behind input */
 .chat-messages-container {
-    padding-bottom: 120px;
+    padding-bottom: 20px;
 }
 .hero h1 {
     font-size: 1.8rem;
@@ -444,131 +429,81 @@ tab1, tab2, tab3 = st.tabs(["💬   Chat", "📊   Benchmark Results", "🔀   R
 
 # ══ TAB 1: CHAT ═══════════════════════════════════════════════════════════════
 with tab1:
-    col_chat, col_info = st.columns([3, 1])
+    # render message history — full width, no column split
+    # st.chat_input() at tab scope so Streamlit pins it to the page bottom
+    st.markdown('<div class="chat-messages-container">', unsafe_allow_html=True)
 
-    with col_chat:
-        st.markdown('<div class="chat-messages-container">', unsafe_allow_html=True)
-        # render message history
-        for msg in st.session_state.messages:
-            with st.chat_message(msg["role"]):
-                st.markdown(msg["content"])
-                if msg["role"] == "assistant" and "backend" in msg:
-                    cache_badge = ""
-                    if msg.get("strategy") == "kv_aware":
-                        hit = msg.get("cache_hit", False)
-                        cache_badge = ' · <span style="color:#f6e05e;">⚡ KV cache hit</span>' if hit else ' · <span style="color:#718096;">cache miss</span>'
-                    st.markdown(
-                        f'<div style="font-size:0.75rem;color:#4a5568;margin-top:4px;font-family:\'JetBrains Mono\',monospace;">'
-                        f'→ <span style="color:#63b3ed;">{msg["backend"]}</span> '
-                        f'via <span style="color:#68d391;">{msg["strategy"]}</span>'
-                        f'{cache_badge}</div>',
-                        unsafe_allow_html=True,
-                    )
-
-        if prompt := st.chat_input("Ask anything — watch the router decide which backend responds…"):
-            st.session_state.messages.append({"role": "user", "content": prompt})
-            with st.chat_message("user"):
-                st.markdown(prompt)
-
-            with st.chat_message("assistant"):
-                with st.spinner("Routing request…"):
-                    try:
-                        reply, backend, strategy, cache_hit = chat(st.session_state.messages)
-                    except Exception as e:
-                        reply = f"Error: {e}"
-                        backend, strategy, cache_hit = "—", "—", False
-
-                st.markdown(reply)
+    for msg in st.session_state.messages:
+        with st.chat_message(msg["role"]):
+            st.markdown(msg["content"])
+            if msg["role"] == "assistant" and "backend" in msg:
                 cache_badge = ""
-                if strategy == "kv_aware":
-                    cache_badge = ' · <span style="color:#f6e05e;">⚡ KV cache hit</span>' if cache_hit else ' · <span style="color:#718096;">cache miss</span>'
+                if msg.get("strategy") == "kv_aware":
+                    hit = msg.get("cache_hit", False)
+                    cache_badge = ' · <span style="color:#f6e05e;">⚡ KV cache hit</span>' if hit else ' · <span style="color:#718096;">cache miss</span>'
                 st.markdown(
                     f'<div style="font-size:0.75rem;color:#4a5568;margin-top:4px;font-family:\'JetBrains Mono\',monospace;">'
-                    f'→ <span style="color:#63b3ed;">{backend}</span> '
-                    f'via <span style="color:#68d391;">{strategy}</span>'
+                    f'→ <span style="color:#63b3ed;">{msg["backend"]}</span> '
+                    f'via <span style="color:#68d391;">{msg["strategy"]}</span>'
                     f'{cache_badge}</div>',
                     unsafe_allow_html=True,
                 )
 
-            st.session_state.messages.append({
-                "role": "assistant",
-                "content": reply,
-                "backend": backend,
-                "strategy": strategy,
-                "cache_hit": cache_hit,
-            })
+    st.markdown('</div>', unsafe_allow_html=True)
 
-            # update routing log
-            st.session_state.request_count += 1
-            latest = fetch_status()
-            kv_rate = latest.get("metrics", {}).get("kv_cache_hit_rate")
-            kv_str = f"{kv_rate*100:.0f}%" if kv_rate is not None else "—"
-            st.session_state.routing_log.insert(0, {
-                "n": st.session_state.request_count,
-                "backend": backend,
-                "strategy": strategy,
-                "cache_hit": cache_hit,
-                "kv_rate": kv_str,
-                "time": datetime.now().strftime("%H:%M:%S"),
-            })
-            st.session_state.routing_log = st.session_state.routing_log[:15]
+    if st.session_state.messages:
+        if st.button("Clear chat", key="clear_chat"):
+            st.session_state.messages = []
+            st.rerun()
 
-        st.markdown('</div>', unsafe_allow_html=True)
+    # chat input at tab scope → Streamlit renders it fixed at page bottom
+    if prompt := st.chat_input("Ask anything — watch the router decide which backend responds…"):
+        st.session_state.messages.append({"role": "user", "content": prompt})
+        with st.chat_message("user"):
+            st.markdown(prompt)
 
-        if st.session_state.messages:
-            if st.button("Clear chat", key="clear_chat"):
-                st.session_state.messages = []
-                st.rerun()
+        with st.chat_message("assistant"):
+            with st.spinner("Routing request…"):
+                try:
+                    reply, backend, strategy, cache_hit = chat(st.session_state.messages)
+                except Exception as e:
+                    reply = f"Error: {e}"
+                    backend, strategy, cache_hit = "—", "—", False
 
-        # force chat input to bottom via JS
-        st.markdown("""
-        <script>
-        const moveInput = () => {
-            const el = document.querySelector('[data-testid="stChatInputContainer"]')
-                     || document.querySelector('section[data-testid="stBottom"]')
-                     || document.querySelector('.stChatInputContainer');
-            if (el) {
-                el.style.position = 'fixed';
-                el.style.bottom = '2rem';
-                el.style.left = '22rem';
-                el.style.right = '2rem';
-                el.style.zIndex = '9999';
-                el.style.background = '#0f1117';
-                el.style.borderTop = '1px solid #2d3748';
-                el.style.paddingTop = '12px';
-            } else {
-                setTimeout(moveInput, 200);
-            }
-        };
-        moveInput();
-        </script>
-        """, unsafe_allow_html=True)
-
-    with col_info:
-        st.markdown('<div class="section-header">How It Works</div>', unsafe_allow_html=True)
-        st.markdown("""
-        <div style="font-size:0.8rem;color:#718096;line-height:1.7;">
-        1. Your message is hashed (SHA-256)<br>
-        2. Active strategy picks a backend<br>
-        3. Request forwarded to llama.cpp<br>
-        4. Response headers reveal routing decision<br><br>
-        <span style="color:#4a5568;">Try switching strategies in the sidebar and ask the same question twice — watch <span style="color:#f6e05e;">kv_aware</span> route to the same backend.</span>
-        </div>
-        """, unsafe_allow_html=True)
-
-        st.markdown("<div style='height:16px'></div>", unsafe_allow_html=True)
-        st.markdown('<div class="section-header">Strategy Guide</div>', unsafe_allow_html=True)
-        for s, desc in STRATEGY_DESCRIPTIONS.items():
-            active = "●" if s == current_strategy else "○"
-            color = "#63b3ed" if s == current_strategy else "#4a5568"
+            st.markdown(reply)
+            cache_badge = ""
+            if strategy == "kv_aware":
+                cache_badge = ' · <span style="color:#f6e05e;">⚡ KV cache hit</span>' if cache_hit else ' · <span style="color:#718096;">cache miss</span>'
             st.markdown(
-                f'<div style="margin-bottom:8px;">'
-                f'<span style="color:{color};font-size:0.75rem;">{active} </span>'
-                f'<span style="color:#a0aec0;font-size:0.78rem;font-weight:600;font-family:\'JetBrains Mono\',monospace;">{s}</span>'
-                f'<div style="color:#4a5568;font-size:0.73rem;margin-top:1px;margin-left:12px;">{desc}</div>'
-                f'</div>',
+                f'<div style="font-size:0.75rem;color:#4a5568;margin-top:4px;font-family:\'JetBrains Mono\',monospace;">'
+                f'→ <span style="color:#63b3ed;">{backend}</span> '
+                f'via <span style="color:#68d391;">{strategy}</span>'
+                f'{cache_badge}</div>',
                 unsafe_allow_html=True,
             )
+
+        st.session_state.messages.append({
+            "role": "assistant",
+            "content": reply,
+            "backend": backend,
+            "strategy": strategy,
+            "cache_hit": cache_hit,
+        })
+
+        # update routing log
+        st.session_state.request_count += 1
+        latest = fetch_status()
+        kv_rate = latest.get("metrics", {}).get("kv_cache_hit_rate")
+        kv_str = f"{kv_rate*100:.0f}%" if kv_rate is not None else "—"
+        st.session_state.routing_log.insert(0, {
+            "n": st.session_state.request_count,
+            "backend": backend,
+            "strategy": strategy,
+            "cache_hit": cache_hit,
+            "kv_rate": kv_str,
+            "time": datetime.now().strftime("%H:%M:%S"),
+        })
+        st.session_state.routing_log = st.session_state.routing_log[:15]
 
 
 # ══ TAB 2: BENCHMARK RESULTS ══════════════════════════════════════════════════
