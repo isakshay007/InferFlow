@@ -438,7 +438,8 @@ with tab1:
             </div>
             """, unsafe_allow_html=True)
         for msg in st.session_state.messages:
-            with st.chat_message(msg["role"]):
+            label = "You" if msg["role"] == "user" else "Agent"
+            with st.chat_message(label):
                 st.markdown(msg["content"])
                 if msg["role"] == "assistant" and "backend" in msg:
                     cache_badge = ""
@@ -454,16 +455,18 @@ with tab1:
                     )
 
     if st.session_state.messages:
-        if st.button("Clear chat", key="clear_chat"):
-            st.session_state.messages = []
-            st.rerun()
+        _, col_btn = st.columns([9, 1])
+        with col_btn:
+            if st.button("Clear", key="clear_chat", use_container_width=True):
+                st.session_state.messages = []
+                st.rerun()
 
     if prompt := st.chat_input("Ask anything — watch the router decide which backend responds…"):
         st.session_state.messages.append({"role": "user", "content": prompt})
 
         # show spinner inside the messages box while waiting for the backend
         with msgs_box:
-            with st.chat_message("assistant"):
+            with st.chat_message("Agent"):
                 with st.spinner("Routing request…"):
                     try:
                         reply, backend, strategy, cache_hit = chat(st.session_state.messages)
