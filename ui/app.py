@@ -53,7 +53,7 @@ html, body, [class*="css"] { font-family: 'Inter', sans-serif; }
     left: var(--sidebar-width, 21rem) !important;
     right: 0 !important;
     background: #0f1117 !important;
-    padding: 20px 3rem 28px 3rem !important;
+    padding: 20px 3rem 60px 3rem !important;
     border-top: 1px solid #2d3748 !important;
     z-index: 999 !important;
 }
