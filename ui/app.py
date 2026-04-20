@@ -301,7 +301,7 @@ SYSTEM_PROMPT = {
 }
 
 import re as _re
-_JUNK_PREFIX = _re.compile(r'^[\d\s\?\!\.\:]+')
+_JUNK_PREFIX = _re.compile(r'^(assistant\s*:\s*|answer\s*:\s*|response\s*:\s*|[\d\s\?\!\.\:]+)', _re.IGNORECASE)
 
 
 def chat(messages: list) -> tuple[str, str, str, bool]:
