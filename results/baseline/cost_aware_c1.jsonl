@@ -1,0 +1,10 @@
+{"strategy": "cost_aware", "concurrency": 1, "request_id": 1, "status_code": 200, "latency_ms": 1907.871, "timestamp": "2026-03-30T03:33:57.512759Z", "error": null}
+{"strategy": "cost_aware", "concurrency": 1, "request_id": 2, "status_code": 200, "latency_ms": 978.189, "timestamp": "2026-03-30T03:33:59.421045Z", "error": null}
+{"strategy": "cost_aware", "concurrency": 1, "request_id": 3, "status_code": 200, "latency_ms": 4980.448, "timestamp": "2026-03-30T03:34:00.399678Z", "error": null}
+{"strategy": "cost_aware", "concurrency": 1, "request_id": 4, "status_code": 200, "latency_ms": 2800.592, "timestamp": "2026-03-30T03:34:05.380665Z", "error": null}
+{"strategy": "cost_aware", "concurrency": 1, "request_id": 5, "status_code": 200, "latency_ms": 2738.973, "timestamp": "2026-03-30T03:34:08.182091Z", "error": null}
+{"strategy": "cost_aware", "concurrency": 1, "request_id": 6, "status_code": 502, "latency_ms": 10004.774, "timestamp": "2026-03-30T03:34:10.921422Z", "error": "http_502"}
+{"strategy": "cost_aware", "concurrency": 1, "request_id": 7, "status_code": 200, "latency_ms": 2223.789, "timestamp": "2026-03-30T03:34:20.926890Z", "error": null}
+{"strategy": "cost_aware", "concurrency": 1, "request_id": 8, "status_code": 200, "latency_ms": 435.148, "timestamp": "2026-03-30T03:34:23.150982Z", "error": null}
+{"strategy": "cost_aware", "concurrency": 1, "request_id": 9, "status_code": 200, "latency_ms": 2262.401, "timestamp": "2026-03-30T03:34:23.586362Z", "error": null}
+{"strategy": "cost_aware", "concurrency": 1, "request_id": 10, "status_code": 200, "latency_ms": 2541.571, "timestamp": "2026-03-30T03:34:25.849082Z", "error": null}

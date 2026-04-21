@@ -2,8 +2,8 @@
 
 This folder now supports two separate roles:
 
-- router deployment through [router.yaml](/C:/Users/ajinf/Documents/CS%206650/InferFlow/k8s/router.yaml)
-- vLLM-backed inference through [vllm-worker.yaml](/C:/Users/ajinf/Documents/CS%206650/InferFlow/k8s/vllm-worker.yaml) and [redis.yaml](/C:/Users/ajinf/Documents/CS%206650/InferFlow/k8s/redis.yaml)
+- router deployment through [router.yaml](router.yaml)
+- vLLM-backed inference through [vllm-worker.yaml](vllm-worker.yaml) and [redis.yaml](redis.yaml)
 - retained Triton manifests for future use
 
 ## Prerequisites

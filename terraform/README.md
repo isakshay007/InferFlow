@@ -14,7 +14,7 @@ Terraform owns the AWS baseline for InferFlow.
 
 Use the AWS environment:
 
-- [terraform/environments/aws/main.tf](C:/Users/ajinf/Documents/CS%206650/InferFlow/terraform/environments/aws/main.tf)
+- [terraform/environments/aws/main.tf](environments/aws/main.tf)
 
 ## Current Defaults
 

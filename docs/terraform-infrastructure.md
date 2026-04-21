@@ -20,10 +20,10 @@ Terraform manages the AWS baseline for InferFlow:
 
 Main environment files:
 
-- [main.tf](C:/Users/ajinf/Documents/CS%206650/InferFlow/terraform/environments/aws/main.tf)
-- [variables.tf](C:/Users/ajinf/Documents/CS%206650/InferFlow/terraform/environments/aws/variables.tf)
-- [outputs.tf](C:/Users/ajinf/Documents/CS%206650/InferFlow/terraform/environments/aws/outputs.tf)
-- [terraform.tfvars.example](C:/Users/ajinf/Documents/CS%206650/InferFlow/terraform/environments/aws/terraform.tfvars.example)
+- [main.tf](../terraform/environments/aws/main.tf)
+- [variables.tf](../terraform/environments/aws/variables.tf)
+- [outputs.tf](../terraform/environments/aws/outputs.tf)
+- [terraform.tfvars.example](../terraform/environments/aws/terraform.tfvars.example)
 
 ## Usage
 
