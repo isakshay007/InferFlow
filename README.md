@@ -175,6 +175,36 @@ Planned next:
 
 ---
 
+## Repository Layout
+
+```
+InferFlow/
+├── cmd/
+│   ├── router/          # Main inference routing server
+│   ├── mock-backend/    # Lightweight fake backend (~20ms) for local dev
+│   ├── vllm-adapter/    # Sidecar translating router requests → vLLM API
+│   └── triton-adapter/  # Retained (deferred backend path)
+├── internal/
+│   ├── server/          # HTTP server, config, request handling
+│   ├── router/          # Strategy implementations + backend health tracking
+│   ├── proxy/           # Backend HTTP client, request/response marshaling
+│   ├── cache/           # KV-cache affinity store (Redis + in-memory)
+│   ├── metrics/         # Prometheus metric counters and gauges
+│   ├── vllm/            # vLLM HTTP client
+│   └── otel/            # OpenTelemetry span scaffolding
+├── k8s/                 # Kubernetes manifests (router, vLLM workers, Redis, ALB)
+├── terraform/           # AWS EKS cluster, VPC, node groups, ECR
+├── loadgen/             # Async Python load generator + Locust file
+├── results/             # Experiment CSVs and benchmark summaries
+├── analysis/            # Analysis scripts and plots
+├── ui/                  # Streamlit monitoring dashboard
+├── docs/                # Full documentation
+├── scripts/             # Local-run and cluster setup helpers
+└── .github/workflows/   # CI (go test) + Terraform plan
+```
+
+---
+
 ## Local Quick Start
 
 ### Option 1: Native processes
@@ -220,19 +250,35 @@ The router listens on `http://localhost:8080` and the mock backend is internal t
 
 ## EKS Deployment
 
+### 1. Provision infrastructure
+
 ```bash
 cd terraform/environments/aws
 terraform init
 terraform apply
 ```
 
-Then deploy manifests:
+This creates an EKS 1.32 cluster (`inferflow-eks`, us-east-1), a VPC (10.10.0.0/16), system node group (`t3.medium` × 2), worker node group (`c5.xlarge` × 3), and an ECR repo.
+
+### 2. Build and push images
+
+```bash
+aws ecr get-login-password | docker login --username AWS --password-stdin <ECR_URI>
+docker build -f Dockerfile.router    -t <ECR_URI>/inferflow:router    .
+docker build -f Dockerfile.adapter   -t <ECR_URI>/inferflow:adapter   .
+docker push <ECR_URI>/inferflow:router
+docker push <ECR_URI>/inferflow:adapter
+```
+
+### 3. Deploy to cluster
 
 ```bash
 kubectl apply -f k8s/redis.yaml
 kubectl apply -f k8s/vllm-worker.yaml
 kubectl apply -f k8s/router.yaml
 ```
+
+Set `INFERFLOW_BACKENDS` in `k8s/router.yaml` to the worker pod DNS names.
 
 See [docs/eks-vllm.md](docs/eks-vllm.md) for the full walkthrough.
 
@@ -272,6 +318,16 @@ Provides live backend health, strategy switching, a chat interface to test routi
 }
 ```
 
+**Prometheus metrics exposed:**
+
+| Metric | Description |
+|--------|-------------|
+| `inferflow_inflight_requests` | Current in-flight requests |
+| `inferflow_requests_total` | Cumulative request count |
+| `inferflow_backend_errors_total` | Failed backend requests |
+| `inferflow_strategy_selections_total{strategy}` | Selections per strategy |
+| `inferflow_backend_selections_total{backend}` | Selections per backend |
+
 ---
 
 ## Key Environment Variables
@@ -294,3 +350,13 @@ The active infrastructure path is AWS EKS with llama.cpp backends (3x c5.xlarge 
 - `scripts/local-run.ps1` — starts mock backend and router locally
 - `scripts/setup-cluster.sh` — infrastructure and deployment helper notes
 - `scripts/teardown-cluster.sh` — destroy helper
+
+---
+
+## What's Next
+
+- Streaming SSE responses (chunked transfer)
+- Dynamic backend discovery (Kubernetes endpoint watch)
+- KEDA autoscaling on `inferflow_inflight_requests`
+- Grafana dashboards wired to Prometheus
+- Triton reintroduction as a second backend path
